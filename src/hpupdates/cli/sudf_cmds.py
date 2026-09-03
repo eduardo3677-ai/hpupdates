@@ -245,8 +245,10 @@ def softpaq_download(
     console.print(f"[cyan]Downloading {sp} to {destination}...[/]")
 
     result = download_softpaq(update, str(destination), is_manual=True)
-    if result.status == DownloadStatus.Completed:
+    if result.status == DownloadStatus.Downloaded:
         console.print(f"[green]Downloaded: {result.file_path}[/]")
+    elif result.status == DownloadStatus.AlreadyDownloaded:
+        console.print(f"[green]Already downloaded: {result.file_path}[/]")
     else:
         console.print(f"[red]Download failed: {result.status.name}[/]")
         raise typer.Exit(1)
@@ -571,8 +573,9 @@ def download_all(
 
         update_obj = SoftPaqUpdate(
             guid=str(u.get("Guid", code)),
-            code=code,
-            title=title,
+            sp_id=code,
+            sp_name=title,
+            sp_version=str(u.get("Version", "0")),
             url_result=url,
             url_result_ui=url,
             checksum=str(u.get("CheckSum", "")),
@@ -580,7 +583,7 @@ def download_all(
 
         try:
             result = download_softpaq(update_obj, str(destination), is_manual=True)
-            if result.status == DownloadStatus.Completed:
+            if result.status in (DownloadStatus.Downloaded, DownloadStatus.AlreadyDownloaded):
                 console.print(f"    [green]OK: {result.file_path}[/]")
                 results.append({"code": code, "title": title, "file": result.file_path, "status": "ok"})
                 success += 1
