@@ -321,28 +321,57 @@ class HpImageAssistantCatalogProvider:
         return f"https://{hostname}" + (parsed.path or "/")
 
     def _extract_cab(self, content: bytes) -> bytes:
-        with tempfile.TemporaryDirectory(prefix="hp-driverctl-cab-") as directory:
+        """Extract XML from a CAB file using whichever tool is available.
+
+        Tries (in order): tar.exe (Windows bsdtar), bsdtar, 7z, tar.
+        All are command-line tools that ship with the OS or are easy to install.
+        No native Windows DLLs or Linux-only libraries are required.
+        """
+        import tempfile
+        import subprocess
+        import shutil
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory(prefix="hpupdates-cab-") as directory:
             root = Path(directory)
             cab = root / "catalog.cab"
             cab.write_bytes(content)
-            extractor = shutil.which("tar.exe")
+
+            # Find the best available CAB-capable extractor.
+            extractor = (
+                shutil.which("tar.exe")    # Windows 10+ ships bsdtar as tar.exe
+                or shutil.which("bsdtar")  # Linux/Mac with libarchive
+                or shutil.which("7z")      # 7-Zip (Windows/Linux)
+                or shutil.which("tar")      # Fallback: GNU tar (may not handle CAB)
+            )
             if extractor is None:
-                raise HpCatalogError("Windows tar.exe is required to extract HP catalogs")
-            windows_path = shutil.which("wslpath")
+                raise HpCatalogError(
+                    "No CAB extractor found. Install 'tar' (bsdtar) or '7z'."
+                )
+
+            extractor_name = Path(extractor).name.lower()
+
+            # Convert path for Windows when running under WSL.
             cab_argument = str(cab)
-            if windows_path is not None and not sys.platform.startswith("win"):
-                cab_argument = subprocess.run(
-                    [windows_path, "-w", str(cab)], check=True, capture_output=True, text=True
-                ).stdout.strip()
+            wslpath = shutil.which("wslpath")
+            if wslpath is not None and not sys.platform.startswith("win"):
+                try:
+                    cab_argument = subprocess.run(
+                        [wslpath, "-w", str(cab)],
+                        check=True, capture_output=True, text=True
+                    ).stdout.strip()
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass  # fall back to the Linux path
+
             try:
+                # List archive contents.
                 listing = subprocess.run(
                     [extractor, "-tf", cab_argument],
-                    check=True,
-                    capture_output=True,
-                    text=True,
+                    check=True, capture_output=True, text=True,
                 ).stdout.splitlines()
             except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-                raise HpCatalogError("Windows tar.exe could not inspect the HP catalog") from exc
+                raise HpCatalogError("Could not inspect the HP catalog CAB") from exc
+
             members = [name.strip() for name in listing if name.strip()]
             if len(members) > 16:
                 raise HpCatalogError("HP catalog contains too many archive members")
@@ -351,9 +380,14 @@ class HpImageAssistantCatalogProvider:
                 for name in members
             ):
                 raise HpCatalogError("HP catalog contains an unsafe archive path")
+
             xml_members = [name for name in members if name.lower().endswith(".xml")]
             if len(xml_members) != 1:
-                raise HpCatalogError("HP catalog CAB must contain exactly one XML reference file")
+                raise HpCatalogError(
+                    "HP catalog CAB must contain exactly one XML reference file"
+                )
+
+            # Extract the XML to stdout.
             process = subprocess.Popen(
                 [extractor, "-xOf", cab_argument, xml_members[0]],
                 stdout=subprocess.PIPE,
@@ -368,7 +402,7 @@ class HpImageAssistantCatalogProvider:
             _, stderr = process.communicate()
             if process.returncode != 0:
                 raise HpCatalogError(
-                    "Windows tar.exe could not extract the HP catalog: "
+                    "Could not extract the HP catalog: "
                     + stderr.decode(errors="replace").strip()
                 )
             return content_xml

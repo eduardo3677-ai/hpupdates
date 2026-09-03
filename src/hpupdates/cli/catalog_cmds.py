@@ -32,7 +32,11 @@ def _load_inventory(path: Path) -> list[Device]:
 
 
 def _fresh_catalog(backend: WindowsDriverBackend) -> Path:
-    """Always fetch HP's latest public reference before catalog-backed operations."""
+    """Always fetch HP's latest public reference before catalog-backed operations.
+
+    Tries HPIA catalog first.  Falls back to SUDF when the platform is not in
+    the HPIA platform list (some HP systems are in SUDF but not HPIA).
+    """
     try:
         profile = backend.machine_profile()
     except (OSError, RuntimeError) as exc:
@@ -41,7 +45,75 @@ def _fresh_catalog(backend: WindowsDriverBackend) -> Path:
     try:
         return HpImageAssistantCatalogProvider().refresh(profile, path)
     except HpCatalogError as exc:
+        # If the system ID is not in the HPIA platform list, fall back to SUDF.
+        if "is not present in the current HP platform list" in str(exc):
+            return _sudf_catalog_fallback(profile, path)
         raise typer.BadParameter(str(exc)) from exc
+
+
+def _sudf_catalog_fallback(profile, path: Path) -> Path:
+    """Build a catalog JSON from the SUDF API when HPIA doesn't know the platform."""
+    from hpupdates.cli._helpers import _build_sudf_client
+    from hpupdates.core.services import SudfScanService
+
+    console = Console()
+    console.print(
+        "[yellow]Platform not in HPIA catalog — using SUDF API instead.[/]"
+    )
+    client = _build_sudf_client()
+    from hpupdates.infrastructure.os_params import create_os_code
+
+    os_code = create_os_code(
+        profile.os_caption,
+        profile.os_version,
+        profile.os_architecture,
+        profile.display_version or profile.edition_id,
+    )
+    result = client.get_updates(
+        sys_id=profile.system_id,
+        os_code=os_code,
+        country="us",
+        language="en-US",
+    )
+    updates = result.get("Updates", [])
+    packages = []
+    for u in updates:
+        packages.append({
+            "id": str(u.get("Code", "")).lower(),
+            "name": u.get("Title", u.get("Code", "")),
+            "version": str(u.get("Version", "0")),
+            "vendor": "HP",
+            "category": _sudf_category(u.get("Type", "")),
+            "download_url": u.get("Url", ""),
+            "hardware_ids": [],
+            "sha256": "",
+            "silent_args": [],
+            "release_date": u.get("DateReleased"),
+            "architecture": profile.os_architecture,
+            "device_rules": [],
+            "software_rules": [],
+        })
+    document = {
+        "schema_version": 1,
+        "packages": packages,
+        "source": {
+            "provider": "SUDF fallback",
+            "system_id": profile.system_id,
+            "os_code": os_code,
+        },
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(document, indent=2), encoding="utf-8")
+    return path
+
+
+def _sudf_category(update_type: str) -> str:
+    t = update_type.lower()
+    if "bios" in t or "firmware" in t:
+        return "firmware"
+    if "driver" in t:
+        return "driver"
+    return "software"
 
 
 def _inventory(backend: WindowsDriverBackend, inventory_file: Path | None) -> list[Device]:
@@ -79,13 +151,33 @@ def sync_catalogs(
         typer.Option(help="Directory for the official catalog bundle."),
     ] = None,
 ) -> None:
-    """Download all current public HPIA catalog families for this HP system."""
+    """Download all current public HPIA catalog families for this HP system.
+
+    If the platform is not in the HPIA list, falls back to SUDF.
+    """
     backend = WindowsDriverBackend(CommandRunner())
     try:
         profile = backend.machine_profile()
         destination = output or user_cache_path("hp-driverctl") / "catalogs"
-        manifest = HpCatalogBundleProvider().sync(profile, destination)
-    except (OSError, RuntimeError, HpCatalogError) as exc:
+        try:
+            manifest = HpCatalogBundleProvider().sync(profile, destination)
+        except HpCatalogError as exc:
+            if "is not present in the current HP platform list" in str(exc):
+                console.print(
+                    "[yellow]Platform not in HPIA catalog — using SUDF API instead.[/]"
+                )
+                catalog = _sudf_catalog_fallback(
+                    profile,
+                    user_cache_path("hp-driverctl") / "hp-image-assistant-catalog.json",
+                )
+                typer.echo(json.dumps({
+                    "source": "SUDF fallback",
+                    "catalog": str(catalog),
+                    "system_id": profile.system_id,
+                }, indent=2))
+                return
+            raise typer.BadParameter(str(exc)) from exc
+    except (OSError, RuntimeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(json.dumps(asdict(manifest), indent=2))
 
