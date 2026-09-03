@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hpupdates"
+version = "1.0.0"
+description = "Open-source HP driver/software update CLI — reverse-engineered from HP Support Assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{name = "HP Updates contributors"}]
+dependencies = [
+  "cryptography>=43,<51",
+  "httpx>=0.27,<1",
+  "packaging>=24,<27",
+  "platformdirs>=4,<5",
+  "rich>=13,<16",
+  "typer>=0.15,<1",
+  "pydantic>=2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8",
+  "pytest-cov>=6",
+  "ruff>=0.9",
+  "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+hpupdates = "hpupdates.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hpupdates"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["hpupdates"]
+mypy_path = "src"

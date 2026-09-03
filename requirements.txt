@@ -1,0 +1,10 @@
+# hpupdates — production dependencies
+# Install: pip install -r requirements.txt
+
+cryptography>=43,<51
+httpx>=0.27,<1
+packaging>=24,<27
+platformdirs>=4,<5
+rich>=13,<16
+typer>=0.15,<1
+pydantic>=2,<3

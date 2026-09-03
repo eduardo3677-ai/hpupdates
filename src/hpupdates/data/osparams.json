@@ -1,0 +1,32 @@
+{
+  "OSProductNames": [
+    {"Name": "PR", "Value": "Professional"},
+    {"Name": "ML", "Value": "Multi-Language"},
+    {"Name": "EN", "Value": "Enterprise"},
+    {"Name": "EM", "Value": "Emerging Markets"},
+    {"Name": "EM", "Value": "Single Language (Emerging Markets)"},
+    {"Name": "CH", "Value": "Chinese Market"},
+    {"Name": "CH", "Value": "Country Specific (China)"},
+    {"Name": "UL", "Value": "Ultimate"},
+    {"Name": "HP", "Value": "Home Premium"},
+    {"Name": "HB", "Value": "Home Basic"},
+    {"Name": "SE", "Value": "Starter Edition"}
+  ],
+  "OSProfixs": [
+    {"Name": "W7", "Value": "Windows 7"},
+    {"Name": "W8", "Value": "Windows 8"},
+    {"Name": "W8.1", "Value": "Windows 8.1"},
+    {"Name": "WT", "Value": "Windows 10"},
+    {"Name": "W11", "Value": "Windows 11"}
+  ],
+  "OSRules": [
+    {"Name": "W7", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+    {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+    {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+    {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture", "_", "OSVersion"]},
+    {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture"]},
+    {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture"]},
+    {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture"]},
+    {"Name": "W11", "Mapping": ["OSProfix", "_", "OSVersion"]}
+  ]
+}
