@@ -251,9 +251,9 @@ def softpaq_download(
         is_manual=True,
     )
     if result.status == DownloadStatus.Downloaded:
-        console.print(f"[green]Downloaded: {result.file_path}[/]")
+        console.print(f"[green]Downloaded: {result.local_path}[/]")
     elif result.status == DownloadStatus.AlreadyDownloaded:
-        console.print(f"[green]Already downloaded: {result.file_path}[/]")
+        console.print(f"[green]Already downloaded: {result.local_path}[/]")
     else:
         console.print(f"[red]Download failed: {result.status.name}[/]")
         if result.error_code:
@@ -287,6 +287,7 @@ def softpaq_install(
         sp_id=sp,
         sp_name=f"SoftPaq SP{sp}",
         sp_version="0",
+        executable_name=f"{sp}.exe",
         url_result=url,
         url_result_ui=url,
         silent_install_string="/s /e /f" if silent else "",
@@ -300,20 +301,19 @@ def softpaq_install(
         return
 
     params = InstallParameters(
-        is_manual=not silent,
-        is_weekly=False,
+        scan_type="Manual" if not silent else "DailyBackground",
         serial_number="",
     )
 
     console.print(f"[cyan]Downloading and installing SP{sp}...[/]")
-    result = download_and_install(update, params, work_dir=tempfile.gettempdir())
+    result = download_and_install(update, params, softpaq_folder=tempfile.gettempdir())
 
-    if result.install_result.value <= 2:
-        console.print(f"[green]Install completed (result={result.install_result.name})[/]")
-        if result.install_result.value == 2:
+    if result.result.value <= 2:
+        console.print(f"[green]Install completed (result={result.result.name})[/]")
+        if result.result.value == 2:
             console.print("[yellow]Reboot required.[/]")
     else:
-        console.print(f"[red]Install failed (result={result.install_result.name})[/]")
+        console.print(f"[red]Install failed (result={result.result.name})[/]")
         raise typer.Exit(1)
 
 
@@ -489,6 +489,7 @@ def update_all(
             sp_id=code,
             sp_name=title,
             sp_version=version,
+            executable_name=f"{code}.exe",
             url_result=url,
             url_result_ui=url,
             silent_install_string=str(u.get("SilentInstall", "")),
@@ -499,20 +500,19 @@ def update_all(
         )
 
         params = InstallParameters(
-            is_manual=False,
-            is_weekly=False,
+            scan_type="DailyBackground",
             serial_number=profile.serial_number,
         )
 
         try:
-            result = download_and_install(update_obj, params, work_dir=tempfile.gettempdir())
-            if result.install_result.value <= 2:
-                console.print(f"  [green]OK ({result.install_result.name})[/]")
-                if result.install_result.value == 2:
+            result = download_and_install(update_obj, params, softpaq_folder=tempfile.gettempdir())
+            if result.result.value <= 2:
+                console.print(f"  [green]OK ({result.result.name})[/]")
+                if result.result.value == 2:
                     console.print("  [yellow]Reboot required.[/]")
                 success += 1
             else:
-                console.print(f"  [red]FAIL ({result.install_result.name})[/]")
+                console.print(f"  [red]FAIL ({result.result.name})[/]")
                 failed += 1
         except Exception as exc:
             console.print(f"  [red]ERROR: {exc}[/]")
@@ -595,8 +595,8 @@ def download_all(
             dl_path = str(destination / f"{code}.exe")
             result = download_softpaq(url=url, local_path=dl_path, is_manual=True)
             if result.status in (DownloadStatus.Downloaded, DownloadStatus.AlreadyDownloaded):
-                console.print(f"    [green]OK: {result.file_path}[/]")
-                results.append({"code": code, "title": title, "file": result.file_path, "status": "ok"})
+                console.print(f"    [green]OK: {result.local_path}[/]")
+                results.append({"code": code, "title": title, "file": result.local_path, "status": "ok"})
                 success += 1
             else:
                 console.print(f"    [red]FAIL: {result.status.name}[/]")
