@@ -20,6 +20,7 @@ from hpupdates.infrastructure.catalog.bundle import HpCatalogBundleProvider
 from hpupdates.infrastructure.downloader import Downloader
 from hpupdates.infrastructure.endpoints import endpoint_inventory
 from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError, HpImageAssistantCatalogProvider
+from hpupdates.infrastructure.os_params import create_os_code
 from hpupdates.infrastructure.windows.backend import CommandRunner, WindowsDriverBackend
 
 app = typer.Typer(help="Open-source, auditable Windows HP driver maintenance CLI.")
@@ -54,14 +55,13 @@ def _fresh_catalog(backend: WindowsDriverBackend) -> Path:
 def _sudf_catalog_fallback(profile, path: Path) -> Path:
     """Build a catalog JSON from the SUDF API when HPIA doesn't know the platform."""
     from hpupdates.cli._helpers import _build_sudf_client
-    from hpupdates.core.services import SudfScanService
+    from hpupdates.infrastructure.sudf import SudfRequest
 
     console = Console()
     console.print(
         "[yellow]Platform not in HPIA catalog — using SUDF API instead.[/]"
     )
     client = _build_sudf_client()
-    from hpupdates.infrastructure.os_params import create_os_code
 
     os_code = create_os_code(
         profile.os_caption,
@@ -69,13 +69,16 @@ def _sudf_catalog_fallback(profile, path: Path) -> Path:
         profile.os_architecture,
         profile.display_version or profile.edition_id,
     )
-    result = client.get_updates(
-        sys_id=profile.system_id,
-        os_code=os_code,
+    request = SudfRequest(
+        use_case="HPSF",
+        system_id=profile.system_id,
         country="us",
         language="en-US",
+        os_code=os_code,
+        automatic=False,
     )
-    updates = result.get("Updates", [])
+    result = client.get_updates_by_sysid(request)
+    updates = result.get("Updates", []) or []
     packages = []
     for u in updates:
         packages.append({
