@@ -16,7 +16,6 @@ from __future__ import annotations
 import typer
 from rich.console import Console
 
-from hpupdates.cli.catalog_cmds import app as _cat
 from hpupdates.cli.sudf_cmds import app as _sudf
 from hpupdates.cli.web_cmds import app as _web
 
@@ -40,7 +39,7 @@ def _kebab(name: str) -> str:
     return name.replace("_", "-")
 
 
-for _cmd_app in (_cat, _sudf, _web):
+for _cmd_app in (_sudf, _web):
     for _info in _cmd_app.registered_commands:
         if not _info.name and _info.callback:
             _info.name = _kebab(_info.callback.__name__)

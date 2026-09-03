@@ -752,14 +752,10 @@ def download_softpaq(
     try:
         import urllib.request
 
-        # Build URL with tracking params (matches BITS tracking)
-        tracking = f"?jobId={uuid.uuid4()}&source=HPSA&auto={'0' if is_manual else '1'}"
-        download_url = url + tracking
-
         proxy_handler = urllib.request.ProxyHandler({"https": proxy} if proxy else {})
         opener = urllib.request.build_opener(proxy_handler)
 
-        with opener.open(download_url, timeout=600) as resp:
+        with opener.open(url, timeout=600) as resp:
             total = int(resp.headers.get("Content-Length", 0))
             downloaded = 0
             with open(local_path, "wb") as f:

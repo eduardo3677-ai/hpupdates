@@ -302,18 +302,20 @@ class TestVerifyDetailFiles:
         )
         assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
 
-    def test_non_driver_missing_file_returns_invalid(self) -> None:
+    def test_non_driver_missing_file_returns_uninstalled(self) -> None:
+        """A non-driver update whose files don't exist is UnInstalled."""
         d = UpdateDetector()
         u = SUDFUpdate(
             guid="g1", type="Software",
             detail_files=("C:\\nonexistent_app.exe,1.0.0.0",),
         )
-        assert d.validate_sudf_update(u) == InstallStatus.Invalid
+        assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
 
-    def test_empty_detail_files_returns_invalid(self) -> None:
+    def test_empty_detail_files_returns_uninstalled(self) -> None:
+        """An update with no DetailFiles is UnInstalled (nothing to verify)."""
         d = UpdateDetector()
         u = SUDFUpdate(guid="g1", type="Driver", detail_files=())
-        assert d.validate_sudf_update(u) == InstallStatus.Invalid
+        assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
 
     def test_existing_file_with_older_version_returns_uninstalled(
         self, tmp_path, monkeypatch

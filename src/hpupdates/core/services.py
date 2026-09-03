@@ -280,7 +280,7 @@ class SudfScanService:
         pnp_devices: list[str] | None = None,
         bios_info: dict[str, str] | None = None,
     ) -> list[dict]:
-        from hpupdates.infrastructure.os_params import create_os_code
+        from hpupdates.infrastructure.os_params import create_os_code, create_os_codes
         from hpupdates.infrastructure.sudf import SudfRequest
         from hpupdates.infrastructure.update_detector import (
             InstallStatus,
@@ -312,18 +312,75 @@ class SudfScanService:
         if not sys_id and bios_info:
             sys_id = bios_info.get("sys_id", "")
 
-        # Build the SUDF request
-        request = SudfRequest(
-            use_case=use_case,
-            system_id=sys_id,
-            country=country,
-            language=language,
-            os_code=os_code,
-            automatic=automatic,
-        )
+        # Build a list of OS codes to try — primary first, then fallbacks.
+        # HP's server may not recognize new Windows versions (e.g. 25H2),
+        # so we try progressively older versions.
+        os_codes_to_try: list[str] = []
+        if os_code:
+            os_codes_to_try.append(os_code)
+        if self.windows:
+            try:
+                os_info = self.windows.get_os_info()
+                all_codes = create_os_codes(
+                    os_info["os_product_name"],
+                    os_info["os_version_name"],
+                    os_info["architecture"],
+                    os_info["release_id"],
+                )
+                for c in all_codes:
+                    if c not in os_codes_to_try:
+                        os_codes_to_try.append(c)
+            except Exception:
+                pass
+        if not os_codes_to_try:
+            os_codes_to_try = [""]
 
-        # Call the SUDF API
-        response = self.sudf.get_updates_by_sysid(request)
+        # If the primary OS code looks like a Win11/Win10 version the server
+        # might not know (25H2, 24H2), add fallback versions.
+        if os_codes_to_try and os_codes_to_try[0]:
+            primary = os_codes_to_try[0]
+            import re as _re
+            ver_match = _re.search(r"([A-Z0-9]+_)(\d+H\d)", primary)
+            if ver_match:
+                prefix = ver_match.group(1)
+                versions = ["25H2", "24H2", "23H2", "22H2", "21H2"]
+                current = ver_match.group(2)
+                for v in versions:
+                    fallback = prefix + v
+                    if fallback != primary and fallback not in os_codes_to_try:
+                        os_codes_to_try.append(fallback)
+
+        # Try each OS code until we get updates
+        response = None
+        for try_os_code in os_codes_to_try:
+            request = SudfRequest(
+                use_case=use_case,
+                system_id=sys_id,
+                country=country,
+                language=language,
+                os_code=try_os_code,
+                automatic=automatic,
+            )
+            try:
+                response = self.sudf.get_updates_by_sysid(request)
+                updates_raw = response.get("Updates", []) or []
+                if updates_raw:
+                    break  # Got updates, stop trying
+            except Exception:
+                continue  # Try next OS code
+
+        if response is None:
+            # All OS codes failed — try with empty OS code as last resort
+            request = SudfRequest(
+                use_case=use_case,
+                system_id=sys_id,
+                country=country,
+                language=language,
+                os_code="",
+                automatic=automatic,
+            )
+            response = self.sudf.get_updates_by_sysid(request)
+
         updates_raw = response.get("Updates", []) or []
 
         # Create the detector

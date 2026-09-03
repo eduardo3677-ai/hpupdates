@@ -1,22 +1,18 @@
 """SUDF and installer CLI commands — all auto-detected, no manual IDs required.
 
 Commands:
-  sudf-scan       Scan for updates via SUDF API (auto-detects sys_id, os_code)
-  sudf-scan-json  Same scan, JSON output
+  info             Show complete device info + available updates
+  scan             Scan for updates via SUDF API (alias for sudf-scan)
+  update           Download + install all needed updates
+  download-all     Download all needed drivers/software to a folder (no install)
   softpaq-download Download a single SoftPaq by SP number
   softpaq-install  Download + install a single SoftPaq
-  bios-check      Check if a BIOS update is available
-  os-code         Show the auto-detected OS code
-  pnp-devices     List all PnP hardware IDs
-  info            Show complete device info: missing drivers, software, updates
-  update          Download + install all needed updates
-  download-all    Download all needed drivers/software to a folder (no install)
+  bios-check       Check if a BIOS update is available
 """
 
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -33,55 +29,38 @@ console = Console()
 
 
 # ---------------------------------------------------------------------------
-# sudf-scan — auto-detect everything, scan for updates
+# Shared helpers
 # ---------------------------------------------------------------------------
 
-@app.command("sudf-scan")
-def sudf_scan(
-    country: Annotated[str, typer.Option("--country", help="ISO country code (default: auto from locale).")] = "",
-    language: Annotated[str, typer.Option("--language", help="ISO language code (default: auto from locale).")] = "",
-) -> None:
-    """Scan for updates using the SUDF API (GetUpdatesBySysId).
-
-    All device info (SysId, OS code, PnP devices, BIOS) is auto-detected.
-    """
-    profile = detect_profile_or_exit()
-    _country = country or "us"
-    _language = language or "en-US"
-
+def _scan_updates(profile, country: str = "us", language: str = "en-US") -> list[dict]:
+    """Run a SUDF scan and return the list of needed updates."""
     from hpupdates.cli._helpers import _build_sudf_client
     from hpupdates.core.services import SudfScanService
 
     client = _build_sudf_client()
     service = SudfScanService(sudf_client=client)
+    return service.scan(
+        sys_id=profile.sys_id,
+        country=country,
+        language=language,
+        os_code=profile.os_code,
+        pnp_devices=profile.pnp_devices,
+        bios_info=profile.bios_info,
+    )
 
-    console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")
 
-    try:
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            country=_country,
-            language=_language,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
-    except Exception as exc:
-        console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
-
-    if not needed:
+def _print_updates_table(updates: list[dict], title: str | None = None) -> None:
+    """Print a Rich table of updates."""
+    if not updates:
         console.print("[green]No updates needed — system is up to date.[/]")
         return
-
-    table = Table(title=f"{len(needed)} updates needed")
+    table = Table(title=title or f"{len(updates)} updates")
     table.add_column("Code", style="cyan")
     table.add_column("Title")
     table.add_column("Version")
     table.add_column("Type")
     table.add_column("Category")
-
-    for u in needed:
+    for u in updates:
         table.add_row(
             str(u.get("Code", "")),
             str(u.get("Title", ""))[:60],
@@ -89,232 +68,7 @@ def sudf_scan(
             str(u.get("Type", "")),
             str(u.get("Category", "")),
         )
-
     console.print(table)
-
-
-# ---------------------------------------------------------------------------
-# sudf-scan-json — same as sudf-scan but JSON output
-# ---------------------------------------------------------------------------
-
-@app.command("sudf-scan-json")
-def sudf_scan_json(
-    country: Annotated[str, typer.Option("--country")] = "",
-    language: Annotated[str, typer.Option("--language")] = "",
-) -> None:
-    """Scan for updates and emit JSON (all auto-detected)."""
-    profile = detect_profile_or_exit()
-    _country = country or "us"
-    _language = language or "en-US"
-
-    from hpupdates.cli._helpers import _build_sudf_client
-    from hpupdates.core.services import SudfScanService
-
-    client = _build_sudf_client()
-    service = SudfScanService(sudf_client=client)
-
-    try:
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            country=_country,
-            language=_language,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
-    except Exception as exc:
-        print(json.dumps({"error": str(exc), "profile": profile.summary()}))
-        raise typer.Exit(1)
-
-    print(json.dumps({
-        "profile": profile.summary(),
-        "updates_needed": len(needed),
-        "updates": needed,
-    }, indent=2, default=str))
-
-
-# ---------------------------------------------------------------------------
-# bios-check — auto-detect BIOS info and check for updates
-# ---------------------------------------------------------------------------
-
-@app.command("bios-check")
-def bios_check(
-    country: Annotated[str, typer.Option("--country")] = "",
-    language: Annotated[str, typer.Option("--language")] = "",
-) -> None:
-    """Check if a BIOS update is available (auto-detects current BIOS)."""
-    profile = detect_profile_or_exit()
-    _country = country or "us"
-    _language = language or "en-US"
-
-    from hpupdates.cli._helpers import _build_sudf_client
-    from hpupdates.core.services import SudfScanService
-
-    client = _build_sudf_client()
-    service = SudfScanService(sudf_client=client)
-
-    console.print(f"[cyan]Current BIOS: {profile.bios_version} (dated {profile.bios_release_date})[/]")
-    console.print(f"[cyan]Checking for BIOS updates (SysID={profile.sys_id})...[/]")
-
-    try:
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            country=_country,
-            language=_language,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
-    except Exception as exc:
-        console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
-
-    bios_updates = [u for u in needed if str(u.get("Type", "")).lower() == "bios"]
-
-    if not bios_updates:
-        console.print("[green]No BIOS updates available.[/]")
-        return
-
-    for u in bios_updates:
-        console.print(f"[yellow]BIOS update available: {u.get('Title', '')}[/]")
-        console.print(f"  Version: {u.get('Version', '')}")
-        console.print(f"  Code: {u.get('Code', '')}")
-
-
-# ---------------------------------------------------------------------------
-# os-code — show auto-detected OS code
-# ---------------------------------------------------------------------------
-
-@app.command("os-code")
-def os_code() -> None:
-    """Show the auto-detected OS code (WT64_22H2, W11_23H2, etc.)."""
-    profile = detect_profile_or_exit()
-    console.print(profile.os_code)
-
-
-# ---------------------------------------------------------------------------
-# pnp-devices — list all PnP hardware IDs
-# ---------------------------------------------------------------------------
-
-@app.command("pnp-devices")
-def pnp_devices() -> None:
-    """List all PnP device hardware IDs (Win32_PnPEntity)."""
-    profile = detect_profile_or_exit()
-
-    table = Table(title=f"{len(profile.pnp_devices)} PnP device IDs")
-    table.add_column("#", style="dim")
-    table.add_column("Hardware ID")
-
-    for i, dev_id in enumerate(profile.pnp_devices, 1):
-        table.add_row(str(i), dev_id)
-
-    console.print(table)
-
-
-# ---------------------------------------------------------------------------
-# softpaq-download — download a single SoftPaq
-# ---------------------------------------------------------------------------
-
-@app.command("softpaq-download")
-def softpaq_download(
-    softpaq: Annotated[str, typer.Argument(help="SoftPaq number (e.g. SP12345) or download URL.")],
-    destination: Annotated[Path, typer.Option("--destination", "-d", help="Download directory.")] = Path("."),
-    checksum: Annotated[str, typer.Option("--checksum", help="Expected MD5 checksum (optional).")] = "",
-) -> None:
-    """Download a SoftPaq using the installer engine (BITS + MD5)."""
-    from hpupdates.infrastructure.installer import SoftPaqUpdate, DownloadStatus, download_softpaq
-
-    sp = softpaq.upper().removeprefix("SP")
-    if softpaq.startswith("http"):
-        url = softpaq
-    else:
-        prefix = sp[:5]
-        url = f"https://ftp.hp.com/pub/softpaq/sp{prefix}01-sp{prefix}00/sp{sp}.exe"
-
-    update = SoftPaqUpdate(
-        guid=sp,
-        sp_id=sp,
-        sp_name=f"SoftPaq SP{sp}",
-        sp_version="0",
-        url_result=url,
-        url_result_ui=url,
-        checksum=checksum,
-    )
-
-    destination.mkdir(parents=True, exist_ok=True)
-    console.print(f"[cyan]Downloading {sp} to {destination}...[/]")
-
-    local_path = str(destination / f"{sp}.exe")
-    result = download_softpaq(
-        url=url,
-        local_path=local_path,
-        is_manual=True,
-    )
-    if result.status == DownloadStatus.Downloaded:
-        console.print(f"[green]Downloaded: {result.local_path}[/]")
-    elif result.status == DownloadStatus.AlreadyDownloaded:
-        console.print(f"[green]Already downloaded: {result.local_path}[/]")
-    else:
-        console.print(f"[red]Download failed: {result.status.name}[/]")
-        if result.error_code:
-            console.print(f"[dim]  Error: {result.error_code}[/]")
-        raise typer.Exit(1)
-
-
-# ---------------------------------------------------------------------------
-# softpaq-install — download and install a single SoftPaq
-# ---------------------------------------------------------------------------
-
-@app.command("softpaq-install")
-def softpaq_install(
-    softpaq: Annotated[str, typer.Argument(help="SoftPaq number (e.g. SP12345) or path to .exe.")],
-    apply: Annotated[bool, typer.Option("--apply", help="Actually install (default is dry-run).")] = False,
-    silent: Annotated[bool, typer.Option("--silent", help="Use silent install (default: auto-decide).")] = False,
-    loud: Annotated[bool, typer.Option("--loud", help="Force loud (UI) install.")] = False,
-) -> None:
-    """Download and install a SoftPaq (full flow: verify, download, install)."""
-    from hpupdates.infrastructure.installer import SoftPaqUpdate, InstallParameters, download_and_install
-
-    sp = softpaq.upper().removeprefix("SP")
-    if softpaq.startswith("http"):
-        url = softpaq
-    else:
-        prefix = sp[:5]
-        url = f"https://ftp.hp.com/pub/softpaq/sp{prefix}01-sp{prefix}00/sp{sp}.exe"
-
-    update = SoftPaqUpdate(
-        guid=sp,
-        sp_id=sp,
-        sp_name=f"SoftPaq SP{sp}",
-        sp_version="0",
-        executable_name=f"{sp}.exe",
-        url_result=url,
-        url_result_ui=url,
-        silent_install_string="/s /e /f" if silent else "",
-    )
-
-    if not apply:
-        console.print(f"[yellow]DRY RUN: Would download and install SP{sp}[/]")
-        console.print(f"  URL: {url}")
-        console.print(f"  Mode: {'loud' if loud else 'silent' if silent else 'auto'}")
-        console.print("[dim]Use --apply to actually install.[/]")
-        return
-
-    params = InstallParameters(
-        scan_type="Manual" if not silent else "DailyBackground",
-        serial_number="",
-    )
-
-    console.print(f"[cyan]Downloading and installing SP{sp}...[/]")
-    result = download_and_install(update, params, softpaq_folder=tempfile.gettempdir())
-
-    if result.result.value <= 2:
-        console.print(f"[green]Install completed (result={result.result.name})[/]")
-        if result.result.value == 2:
-            console.print("[yellow]Reboot required.[/]")
-    else:
-        console.print(f"[red]Install failed (result={result.result.name})[/]")
-        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -383,40 +137,185 @@ def info(
     # Try SUDF scan for updates
     console.print("\n[cyan]Checking for available updates...[/]")
     try:
-        from hpupdates.cli._helpers import _build_sudf_client
-        from hpupdates.core.services import SudfScanService
-
-        client = _build_sudf_client()
-        service = SudfScanService(sudf_client=client)
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
-
-        if needed:
-            updates_table = Table(title=f"Available Updates ({len(needed)})")
-            updates_table.add_column("Code", style="cyan")
-            updates_table.add_column("Title")
-            updates_table.add_column("Version")
-            updates_table.add_column("Type")
-            updates_table.add_column("Category")
-
-            for u in needed:
-                updates_table.add_row(
-                    str(u.get("Code", "")),
-                    str(u.get("Title", ""))[:50],
-                    str(u.get("Version", "")),
-                    str(u.get("Type", "")),
-                    str(u.get("Category", "")),
-                )
-
-            console.print(updates_table)
-        else:
-            console.print("[green]System is up to date — no updates needed.[/]")
+        needed = _scan_updates(profile)
+        _print_updates_table(needed, f"Available Updates ({len(needed)})")
     except Exception as exc:
         console.print(f"[yellow]Could not check for updates: {exc}[/]")
+
+
+# ---------------------------------------------------------------------------
+# scan — scan for updates via SUDF
+# ---------------------------------------------------------------------------
+
+@app.command("scan")
+def scan(
+    country: Annotated[str, typer.Option("--country")] = "",
+    language: Annotated[str, typer.Option("--language")] = "",
+    json_output: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Scan for updates using the SUDF API (GetUpdatesBySysId).
+
+    All device info (SysId, OS code, PnP devices, BIOS) is auto-detected.
+    """
+    profile = detect_profile_or_exit()
+    _country = country or "us"
+    _language = language or "en-US"
+
+    console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")
+
+    try:
+        needed = _scan_updates(profile, _country, _language)
+    except Exception as exc:
+        console.print(f"[red]Scan failed: {exc}[/]")
+        raise typer.Exit(1)
+
+    if json_output:
+        print(json.dumps({
+            "profile": profile.summary(),
+            "updates_needed": len(needed),
+            "updates": needed,
+        }, indent=2, default=str))
+        return
+
+    _print_updates_table(needed)
+
+
+# ---------------------------------------------------------------------------
+# bios-check — auto-detect BIOS info and check for updates
+# ---------------------------------------------------------------------------
+
+@app.command("bios-check")
+def bios_check(
+    country: Annotated[str, typer.Option("--country")] = "",
+    language: Annotated[str, typer.Option("--language")] = "",
+) -> None:
+    """Check if a BIOS update is available (auto-detects current BIOS)."""
+    profile = detect_profile_or_exit()
+    _country = country or "us"
+    _language = language or "en-US"
+
+    console.print(f"[cyan]Current BIOS: {profile.bios_version} (dated {profile.bios_release_date})[/]")
+    console.print(f"[cyan]Checking for BIOS updates (SysID={profile.sys_id})...[/]")
+
+    try:
+        needed = _scan_updates(profile, _country, _language)
+    except Exception as exc:
+        console.print(f"[red]Scan failed: {exc}[/]")
+        raise typer.Exit(1)
+
+    bios_updates = [u for u in needed if str(u.get("Type", "")).lower() == "bios"]
+
+    if not bios_updates:
+        console.print("[green]No BIOS updates available.[/]")
+        return
+
+    for u in bios_updates:
+        console.print(f"[yellow]BIOS update available: {u.get('Title', '')}[/]")
+        console.print(f"  Version: {u.get('Version', '')}")
+        console.print(f"  Code: {u.get('Code', '')}")
+
+
+def _softpaq_url(sp: str) -> str:
+    """Build the HP FTP download URL for a SoftPaq number.
+
+    HP groups SoftPaqs in blocks of 500: sp{N}001-sp{N+1}500/sp{N}.exe
+    e.g. SP153033 -> sp153001-153500/sp153033.exe
+    """
+    num = int(sp)
+    group_start = (num // 500) * 500 + 1
+    group_end = (num // 500 + 1) * 500
+    return f"https://ftp.hp.com/pub/softpaq/sp{group_start}-{group_end}/sp{sp}.exe"
+
+
+# ---------------------------------------------------------------------------
+# softpaq-download — download a single SoftPaq
+# ---------------------------------------------------------------------------
+
+@app.command("softpaq-download")
+def softpaq_download(
+    softpaq: Annotated[str, typer.Argument(help="SoftPaq number (e.g. SP12345) or download URL.")],
+    destination: Annotated[Path, typer.Option("--destination", "-d", help="Download directory.")] = Path("."),
+    checksum: Annotated[str, typer.Option("--checksum", help="Expected MD5 checksum (optional).")] = "",
+) -> None:
+    """Download a SoftPaq using the installer engine."""
+    from hpupdates.infrastructure.installer import DownloadStatus, download_softpaq
+
+    sp = softpaq.upper().removeprefix("SP")
+    if softpaq.startswith("http"):
+        url = softpaq
+    else:
+        url = _softpaq_url(sp)
+
+    destination.mkdir(parents=True, exist_ok=True)
+    console.print(f"[cyan]Downloading {sp} to {destination}...[/]")
+
+    local_path = str(destination / f"{sp}.exe")
+    result = download_softpaq(url=url, local_path=local_path, is_manual=True)
+
+    if result.status in (DownloadStatus.Downloaded, DownloadStatus.AlreadyDownloaded):
+        console.print(f"[green]Downloaded: {result.local_path}[/]")
+    else:
+        console.print(f"[red]Download failed: {result.status.name}[/]")
+        if result.error_code:
+            console.print(f"[dim]  Error: {result.error_code}[/]")
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# softpaq-install — download and install a single SoftPaq
+# ---------------------------------------------------------------------------
+
+@app.command("softpaq-install")
+def softpaq_install(
+    softpaq: Annotated[str, typer.Argument(help="SoftPaq number (e.g. SP12345) or path to .exe.")],
+    apply: Annotated[bool, typer.Option("--apply", help="Actually install (default is dry-run).")] = False,
+    silent: Annotated[bool, typer.Option("--silent", help="Use silent install.")] = False,
+    loud: Annotated[bool, typer.Option("--loud", help="Force loud (UI) install.")] = False,
+) -> None:
+    """Download and install a SoftPaq (full flow: verify, download, install)."""
+    from hpupdates.infrastructure.installer import (
+        InstallParameters, SoftPaqUpdate, download_and_install,
+    )
+
+    sp = softpaq.upper().removeprefix("SP")
+    if softpaq.startswith("http"):
+        url = softpaq
+    else:
+        url = _softpaq_url(sp)
+
+    update = SoftPaqUpdate(
+        guid=sp,
+        sp_id=sp,
+        sp_name=f"SoftPaq SP{sp}",
+        sp_version="0",
+        executable_name=f"{sp}.exe",
+        url_result=url,
+        url_result_ui=url,
+        silent_install_string="/s /e /f" if silent else "",
+    )
+
+    if not apply:
+        console.print(f"[yellow]DRY RUN: Would download and install SP{sp}[/]")
+        console.print(f"  URL: {url}")
+        console.print(f"  Mode: {'loud' if loud else 'silent' if silent else 'auto'}")
+        console.print("[dim]Use --apply to actually install.[/]")
+        return
+
+    params = InstallParameters(
+        scan_type="Manual" if not silent else "DailyBackground",
+        serial_number="",
+    )
+
+    console.print(f"[cyan]Downloading and installing SP{sp}...[/]")
+    result = download_and_install(update, params, softpaq_folder=tempfile.gettempdir())
+
+    if result.result.value <= 2:
+        console.print(f"[green]Install completed (result={result.result.name})[/]")
+        if result.result.value == 2:
+            console.print("[yellow]Reboot required.[/]")
+    else:
+        console.print(f"[red]Install failed (result={result.result.name})[/]")
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -439,21 +338,8 @@ def update_all(
 
     console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")
 
-    from hpupdates.cli._helpers import _build_sudf_client
-    from hpupdates.core.services import SudfScanService
-
-    client = _build_sudf_client()
-    service = SudfScanService(sudf_client=client)
-
     try:
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            country=_country,
-            language=_language,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
+        needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
         raise typer.Exit(1)
@@ -471,7 +357,9 @@ def update_all(
         console.print("[dim]Use --apply to actually download and install.[/]")
         return
 
-    from hpupdates.infrastructure.installer import SoftPaqUpdate, InstallParameters, download_and_install
+    from hpupdates.infrastructure.installer import (
+        InstallParameters, SoftPaqUpdate, download_and_install,
+    )
 
     success = 0
     failed = 0
@@ -535,7 +423,7 @@ def download_all(
     """Download all needed drivers and software to a folder (no install).
 
     Auto-detects the device, scans for updates, and downloads each
-    SoftPaq to the specified directory with MD5 verification.
+    SoftPaq to the specified directory.
     """
     profile = detect_profile_or_exit()
     _country = country or "us"
@@ -544,22 +432,8 @@ def download_all(
 
     console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")
 
-    from hpupdates.cli._helpers import _build_sudf_client
-    from hpupdates.core.services import SudfScanService
-    from hpupdates.infrastructure.installer import SoftPaqUpdate, DownloadStatus, download_softpaq
-
-    client = _build_sudf_client()
-    service = SudfScanService(sudf_client=client)
-
     try:
-        needed = service.scan(
-            sys_id=profile.sys_id,
-            country=_country,
-            language=_language,
-            os_code=profile.os_code,
-            pnp_devices=profile.pnp_devices,
-            bios_info=profile.bios_info,
-        )
+        needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
         raise typer.Exit(1)
@@ -569,6 +443,8 @@ def download_all(
         return
 
     console.print(f"[cyan]Downloading {len(needed)} packages to {destination}...[/]")
+
+    from hpupdates.infrastructure.installer import DownloadStatus, download_softpaq
 
     results = []
     success = 0
@@ -580,16 +456,6 @@ def download_all(
         url = str(u.get("Location", "") or u.get("LocationUI", ""))
 
         console.print(f"  [{i}/{len(needed)}] {code} — {title[:50]}...")
-
-        update_obj = SoftPaqUpdate(
-            guid=str(u.get("Guid", code)),
-            sp_id=code,
-            sp_name=title,
-            sp_version=str(u.get("Version", "0")),
-            url_result=url,
-            url_result_ui=url,
-            checksum=str(u.get("CheckSum", "")),
-        )
 
         try:
             dl_path = str(destination / f"{code}.exe")

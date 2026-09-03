@@ -312,10 +312,14 @@ class UpdateDetector:
 
         For BIOS type: uses CheckBIOSFile() — compares release dates.
         For Driver/other: uses GetAllExistFiles() + CheckFileVersion().
+
+        If DetailFiles is empty, the update is treated as UnInstalled —
+        the server sent it because it's needed, and there's nothing
+        locally to prove otherwise.
         """
         detail_files = list(update.detail_files)
         if not detail_files:
-            return InstallStatus.Invalid
+            return InstallStatus.UnInstalled
 
         is_bios = update.type.lower() == "bios"
 
@@ -333,9 +337,8 @@ class UpdateDetector:
         is_driver = update.type.lower() == "driver"
         existing_files = self._get_all_exist_files(detail_files)
         if not existing_files:
-            if is_driver:
-                return InstallStatus.UnInstalled
-            return InstallStatus.Invalid
+            # Files don't exist on disk → the update is not installed
+            return InstallStatus.UnInstalled
 
         for detail_file in existing_files:
             status = self._check_file_version(detail_file)

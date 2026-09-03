@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
@@ -43,54 +43,58 @@ def test_cli_exposes_essential_commands() -> None:
         assert command in result.stdout, f"{command!r} missing from --help"
 
 
-def test_scan_refreshes_catalog_before_using_offline_inventory(tmp_path: Path) -> None:
-    catalog = tmp_path / "catalog.json"
-    inventory = tmp_path / "inventory.json"
-    inventory.write_text(
-        json.dumps(
-            [
-                {
-                    "instance_id": "dev",
-                    "name": "Device",
-                    "hardware_ids": ["PCI\\VEN_1234&DEV_1"],
-                    "current_version": "1.0",
-                    "problem_code": 0,
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    def refresh(_provider: object, profile: MachineProfile, output: Path) -> Path:
-        assert profile.system_id == "ABCD"
-        catalog.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "packages": [
-                        {
-                            "id": "x",
-                            "name": "Chipset",
-                            "version": "2.0",
-                            "vendor": "HP",
-                            "category": "driver",
-                            "download_url": "https://ftp.hp.com/x.exe",
-                            "hardware_ids": ["PCI\\VEN_1234"],
-                            "sha256": "a" * 64,
-                        }
-                    ],
-                }
-            ),
-            encoding="utf-8",
-        )
-        return catalog
+def test_scan_uses_sudf_and_returns_updates() -> None:
+    """scan should auto-detect the device and query the SUDF API."""
+    mock_updates = [
+        {
+            "Code": "sp12345",
+            "Title": "Test Driver",
+            "Version": "1.0",
+            "Type": "Driver",
+            "Category": "driver",
+            "Location": "https://ftp.hp.com/pub/softpaq/sp12301-sp12400/sp12345.exe",
+            "Guid": "test-guid",
+            "Devices": [],
+            "DetailFiles": [],
+        }
+    ]
 
     with (
-        patch("hpupdates.cli.catalog_cmds.user_cache_path", return_value=tmp_path),
-        patch("hpupdates.cli.catalog_cmds.WindowsDriverBackend.machine_profile", return_value=_profile()),
-        patch("hpupdates.cli.catalog_cmds.HpImageAssistantCatalogProvider.refresh", new=refresh),
+        patch(
+            "hpupdates.cli.sudf_cmds.detect_profile_or_exit",
+            return_value=MagicMock(
+                sys_id="85F0",
+                serial_number="S",
+                os_code="W11_24H2",
+                pnp_devices=[],
+                bios_info={},
+                devices=[],
+                summary=lambda: {"SysID": "85F0"},
+            ),
+        ),
+        patch(
+            "hpupdates.cli.sudf_cmds._scan_updates",
+            return_value=mock_updates,
+        ),
     ):
-        result = runner.invoke(app, ["scan", "--inventory-file", str(inventory), "--json"])
+        result = runner.invoke(app, ["scan", "--json"])
 
     assert result.exit_code == 0
-    assert '"status": "update_available"' in result.stdout
+    # The CLI prints Rich output before the JSON; extract the JSON part.
+    json_start = result.stdout.index("{")
+    data = json.loads(result.stdout[json_start:])
+    assert data["updates_needed"] == 1
+    assert data["updates"][0]["Code"] == "sp12345"
+
+
+def test_softpaq_download_help() -> None:
+    """softpaq-download should accept a SoftPaq number."""
+    result = runner.invoke(app, ["softpaq-download", "--help"])
+    assert result.exit_code == 0
+    assert "SOFTPAQ" in result.stdout.upper()
+
+
+def test_bios_check_help() -> None:
+    """bios-check should be available."""
+    result = runner.invoke(app, ["bios-check", "--help"])
+    assert result.exit_code == 0
