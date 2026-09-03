@@ -84,9 +84,6 @@ def _sudf_catalog_fallback(profile, path: Path) -> Path:
         profile.os_architecture,
         profile.display_version or profile.edition_id,
     )
-    console.print(f"[dim]  SysID={profile.system_id}  OSCode={os_code}  "
-                   f"OS={profile.os_caption}  Build={profile.os_build}  "
-                   f"Arch={profile.os_architecture}  Release={profile.display_version}[/]")
 
     request = SudfRequest(
         use_case="HPSF",
@@ -98,7 +95,6 @@ def _sudf_catalog_fallback(profile, path: Path) -> Path:
     )
     result = client.get_updates_by_sysid(request)
     updates = result.get("Updates", []) or []
-    console.print(f"[dim]  SUDF returned {len(updates)} updates[/]")
     packages = []
     for u in updates:
         packages.append({
