@@ -507,14 +507,18 @@ class UpdateDetector:
         date_str = detail_list[-1].strip()
         server_date = None
         date_parts = date_str.split(".")
-        if len(date_parts) == 4:
-            try:
+        try:
+            if len(date_parts) == 3:
+                # Format: yyyy.mm.dd
+                server_date = _date(
+                    int(date_parts[0]), int(date_parts[1]), int(date_parts[2])
+                )
+            elif len(date_parts) == 4:
+                # Format: yy.mm.dd.<extra> or yyyy.mm.dd.<extra>
                 year = int(date_parts[0] + date_parts[1])
-                month = int(date_parts[2])
-                day = int(date_parts[3])
-                server_date = _date(year, month, day)
-            except (ValueError, IndexError):
-                pass
+                server_date = _date(year, int(date_parts[2]), int(date_parts[3]))
+        except (ValueError, IndexError):
+            pass
 
         if server_date and self._bios_release_date:
             try:

@@ -623,9 +623,9 @@ class HpsaWebClient:
                 result["downloadInstallUpdate"] = response
             except Exception as e:
                 logger.error(f"download_install_update failed: {e}")
-                result.add_error("InternalError") if hasattr(result, "add_error") else result[
-                    "FaultItemList"
-                ].append({"Origin": "UWP", "ReturnCode": "InternalError"})  # type: ignore[index]
+                result["FaultItemList"].append(
+                    {"Origin": "UWP", "ReturnCode": "InternalError"}
+                )
         return result
 
     def cancel_download_install(self, guids: list[str], serial_number: str) -> dict:
@@ -875,7 +875,7 @@ class HpsaWebClient:
         Country, FirstName, LastName, Language, EmailConsent (Y/N),
         PrimaryUse, EmailAddress, ActiveHealth, City, CompanyName
         """
-        {
+        payload = {
             "Country": profile_data.get("Country", ""),
             "FirstName": profile_data.get("FirstName", ""),
             "LastName": profile_data.get("LastName", ""),
@@ -887,7 +887,9 @@ class HpsaWebClient:
             "City": profile_data.get("City", ""),
             "CompanyName": profile_data.get("CompanyName", ""),
         }
-        return _basic_object()
+        result = _basic_object()
+        result["setProfile"] = payload
+        return result
 
     def is_user_logged_in(self) -> bool:
         """Check if user is logged in — mirrors 'isUserLoggedIn'."""

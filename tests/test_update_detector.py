@@ -453,15 +453,15 @@ class TestCheckBiosFile:
         result = d._check_bios_file(["ROM", "8A4F", "20.20.01.01"], False)
         assert result == InstallStatus.Invalid
 
-    def test_bios_3_part_date_returns_invalid(self) -> None:
-        """3-part date (yy.mm.dd) is not parsed — needs 4 parts."""
+    def test_bios_3_part_date_returns_uninstalled(self) -> None:
+        """3-part date (yyyy.mm.dd) is parsed — newer date means UnInstalled."""
         d = UpdateDetector(
             sys_id="8A4F",
             bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
-        result = d._check_bios_file(["ROM", "8A4F", "20.01.01"], False)
-        assert result == InstallStatus.Invalid
+        result = d._check_bios_file(["ROM", "8A4F", "2024.10.14"], False)
+        assert result == InstallStatus.UnInstalled
 
 
 # ---------------------------------------------------------------------------

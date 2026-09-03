@@ -228,7 +228,7 @@ class WindowsDriverBackend:
         )
         return [line.strip() for line in raw.splitlines() if line.strip()]
 
-    def get_bios_info(self) -> dict[str, str | None]:
+    def get_bios_info(self) -> dict[str, str]:
         """Get BIOS information needed for BIOS update detection.
 
         Mirrors the BIOS info gathering from UpdateDetector.cs:

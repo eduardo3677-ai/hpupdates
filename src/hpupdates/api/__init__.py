@@ -48,10 +48,13 @@ class HpupdatesClient:
         """
         if not os_code:
             from hpupdates.infrastructure.os_params import create_os_code
-            from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
+            from hpupdates.infrastructure.windows.backend import (
+                CommandRunner,
+                WindowsDriverBackend,
+            )
 
             try:
-                backend = WindowsDriverBackend()
+                backend = WindowsDriverBackend(CommandRunner())
                 os_info = backend.get_os_info()
                 os_code = create_os_code(
                     os_info["os_product_name"],
@@ -83,7 +86,17 @@ class HpupdatesClient:
 
         Returns a dict with the installation result.
         """
-        return download_and_install(update, destination, silent=silent)
+        from hpupdates.infrastructure.installer import InstallParameters
+
+        params = InstallParameters(
+            scan_type="DailyBackground" if silent else "Manual",
+        )
+        result = download_and_install(update, params, softpaq_folder=destination)
+        return {
+            "result": result.result.name,
+            "exit_code": result.sp_exit_code,
+            "success": result.result.value <= 2,
+        }
 
 
 __all__ = [

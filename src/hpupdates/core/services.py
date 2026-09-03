@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from packaging.version import InvalidVersion, Version
 
@@ -263,8 +263,8 @@ class SudfScanService:
 
     def __init__(
         self,
-        sudf_client: object,
-        windows_backend: object | None = None,
+        sudf_client: Any,
+        windows_backend: Any | None = None,
     ) -> None:
         self.sudf = sudf_client
         self.windows = windows_backend
