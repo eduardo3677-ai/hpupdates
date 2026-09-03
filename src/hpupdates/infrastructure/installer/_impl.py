@@ -182,7 +182,7 @@ class SoftPaqUpdate:
 # URL validation — mirrors WebUtil.IsValidURL
 # ---------------------------------------------------------------------------
 
-_VALID_HOST_SUFFIXES = (".hp.com", ".hpicorp.net", ".hpicloud.net")
+_VALID_HOST_SUFFIXES = (".hp.com", ".hpicorp.net", ".hpicloud.net", ".hpcloud.hp.net", ".hp.net")
 
 
 def is_valid_url(url: str) -> bool:

@@ -7,12 +7,9 @@ The helper functions below remain for infrastructure use.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 from rich.console import Console
 
-from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError
 from hpupdates.infrastructure.os_params import os_version_name
 
 console = Console()

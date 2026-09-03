@@ -5,7 +5,7 @@ from __future__ import annotations
 from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
 
 
-def _build_sudf_client() -> "SudfClient":  # type: ignore[name-defined]
+def _build_sudf_client() -> "SudfClient":  # type: ignore[name-defined]  # noqa: F821
     """Build a SUDF client with default credentials."""
     from hpupdates.infrastructure.sudf import SudfClient
     return SudfClient()

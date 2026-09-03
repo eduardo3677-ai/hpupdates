@@ -334,18 +334,23 @@ class UpdateDetector:
             return status
 
         # Non-BIOS: check file existence and versions
-        is_driver = update.type.lower() == "driver"
         existing_files = self._get_all_exist_files(detail_files)
         if not existing_files:
             # Files don't exist on disk → the update is not installed
             return InstallStatus.UnInstalled
 
+        has_valid_version = False
         for detail_file in existing_files:
             status = self._check_file_version(detail_file)
             if status == InstallStatus.UnInstalled:
                 return InstallStatus.UnInstalled
+            if status == InstallStatus.Installed:
+                has_valid_version = True
 
-        return InstallStatus.Installed if existing_files else InstallStatus.Invalid
+        # If at least one file has a valid installed version, consider it installed.
+        # If all files had Invalid versions (couldn't read version), treat as
+        # UnInstalled — we can't confirm the installed version is current.
+        return InstallStatus.Installed if has_valid_version else InstallStatus.UnInstalled
 
     def _get_all_exist_files(self, detail_files: list[str]) -> list[str]:
         """Mirrors UpdateDetector.GetAllExistFiles().

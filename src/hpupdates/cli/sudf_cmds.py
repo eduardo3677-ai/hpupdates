@@ -167,7 +167,7 @@ def scan(
         needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     if json_output:
         print(json.dumps({
@@ -201,7 +201,7 @@ def bios_check(
         needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     bios_updates = [u for u in needed if str(u.get("Type", "")).lower() == "bios"]
 
@@ -342,7 +342,7 @@ def update_all(
         needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     if not needed:
         console.print("[green]System is up to date — no updates needed.[/]")
@@ -369,6 +369,12 @@ def update_all(
         title = str(u.get("Title", ""))
         version = str(u.get("Version", ""))
         url = str(u.get("Location", "") or u.get("LocationUI", ""))
+
+        # If no URL from SUDF, build one from the SoftPaq code
+        if not url and code:
+            sp_num = code.upper().removeprefix("SP")
+            if sp_num.isdigit():
+                url = _softpaq_url(sp_num)
 
         console.print(f"\n[cyan][{i}/{len(needed)}] Installing {code} — {title[:50]} v{version}...[/]")
 
@@ -436,7 +442,7 @@ def download_all(
         needed = _scan_updates(profile, _country, _language)
     except Exception as exc:
         console.print(f"[red]Scan failed: {exc}[/]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     if not needed:
         console.print("[green]No updates needed — system is up to date.[/]")
@@ -454,6 +460,12 @@ def download_all(
         code = str(u.get("Code", ""))
         title = str(u.get("Title", ""))
         url = str(u.get("Location", "") or u.get("LocationUI", ""))
+
+        # If no URL from SUDF, build one from the SoftPaq code
+        if not url and code:
+            sp_num = code.upper().removeprefix("SP")
+            if sp_num.isdigit():
+                url = _softpaq_url(sp_num)
 
         console.print(f"  [{i}/{len(needed)}] {code} — {title[:50]}...")
 

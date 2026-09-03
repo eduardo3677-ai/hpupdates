@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated
 
@@ -11,16 +10,11 @@ import typer
 from platformdirs import user_cache_path
 from rich.console import Console
 from rich.table import Table
-from hpupdates.cli._helpers import _build_sudf_client, _build_windows_backend
+from hpupdates.cli._helpers import _build_windows_backend
 
-from hpupdates.core.services import DriverService, SoftwareService, SudfScanService
 from hpupdates.models.models import Device
-from hpupdates.infrastructure.catalog.validator import JsonCatalog
-from hpupdates.infrastructure.catalog.bundle import HpCatalogBundleProvider
-from hpupdates.infrastructure.downloader import Downloader
-from hpupdates.infrastructure.endpoints import endpoint_inventory
 from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError, HpImageAssistantCatalogProvider
-from hpupdates.infrastructure.windows.backend import CommandRunner, WindowsDriverBackend
+from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
 
 app = typer.Typer(help="Open-source, auditable Windows HP driver maintenance CLI.")
 console = Console()

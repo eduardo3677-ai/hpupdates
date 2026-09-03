@@ -327,9 +327,6 @@ class HpImageAssistantCatalogProvider:
         All are command-line tools that ship with the OS or are easy to install.
         No native Windows DLLs or Linux-only libraries are required.
         """
-        import tempfile
-        import subprocess
-        import shutil
         from pathlib import Path
 
         with tempfile.TemporaryDirectory(prefix="hpupdates-cab-") as directory:
@@ -348,8 +345,6 @@ class HpImageAssistantCatalogProvider:
                 raise HpCatalogError(
                     "No CAB extractor found. Install 'tar' (bsdtar) or '7z'."
                 )
-
-            extractor_name = Path(extractor).name.lower()
 
             # Convert path for Windows when running under WSL.
             cab_argument = str(cab)

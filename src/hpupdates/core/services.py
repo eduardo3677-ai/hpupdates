@@ -344,7 +344,6 @@ class SudfScanService:
             if ver_match:
                 prefix = ver_match.group(1)
                 versions = ["25H2", "24H2", "23H2", "22H2", "21H2"]
-                current = ver_match.group(2)
                 for v in versions:
                     fallback = prefix + v
                     if fallback != primary and fallback not in os_codes_to_try:
@@ -379,7 +378,10 @@ class SudfScanService:
                 os_code="",
                 automatic=automatic,
             )
-            response = self.sudf.get_updates_by_sysid(request)
+            try:
+                response = self.sudf.get_updates_by_sysid(request)
+            except Exception as exc:
+                raise RuntimeError(f"SUDF scan failed for all OS codes: {exc}") from exc
 
         updates_raw = response.get("Updates", []) or []
 
