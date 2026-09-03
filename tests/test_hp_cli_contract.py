@@ -3,21 +3,26 @@ from typer.testing import CliRunner
 from hpupdates.cli import app
 
 
-def test_catalog_modes_and_local_catalog_options_are_removed() -> None:
+def test_only_essential_commands_are_present() -> None:
     runner = CliRunner()
-
     root = runner.invoke(app, ["--help"])
-    scan = runner.invoke(app, ["scan", "--help"])
-    software = runner.invoke(app, ["software", "--help"])
-    interactive = runner.invoke(app, ["interactive", "--help"])
 
     assert root.exit_code == 0
-    assert "fetch-catalog" not in root.stdout
-    for result in (scan, software, interactive):
-        assert result.exit_code == 0
-        assert "--catalog" not in result.stdout
-        assert "--automatic" not in result.stdout
-        assert "--manual" not in result.stdout
+
+    # Get registered command names directly from the app.
+    cmd_names = {cmd.name for cmd in app.registered_commands if cmd.name}
+
+    # The 8 essential commands must be present.
+    expected = {"info", "scan", "update", "download-all",
+                "softpaq-download", "softpaq-install", "bios-check", "warranty"}
+    assert expected <= cmd_names, f"Missing commands: {expected - cmd_names}"
+
+    # Removed commands must NOT be present as command names.
+    removed = {"inventory", "identify", "sync-catalogs", "software", "interactive",
+               "doctor", "endpoints", "remove", "settings", "web-action",
+               "solutions", "launcher", "os-code", "pnp-devices",
+               "health-check", "messages", "sudf-scan", "sudf-scan-json"}
+    assert not (removed & cmd_names), f"Removed commands still present: {removed & cmd_names}"
 
 
 def test_scan_rejects_removed_catalog_and_mode_arguments() -> None:

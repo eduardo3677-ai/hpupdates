@@ -141,21 +141,6 @@ def test_product_catalog_url_must_remain_on_public_hpia_host(tmp_path: Path) -> 
         raise AssertionError("unexpected catalog host was accepted")
 
 
-def test_sync_catalogs_cli_uses_detected_machine_and_public_provider(tmp_path: Path) -> None:
-    from unittest.mock import patch
-
-    expected = CatalogBundleManifest("0266", "64", "17134", (), ())
-    with (
-        patch("hpupdates.cli.catalog_cmds.WindowsDriverBackend.machine_profile", return_value=_profile()),
-        patch("hpupdates.cli.catalog_cmds.HpCatalogBundleProvider.sync", return_value=expected) as sync,
-    ):
-        result = CliRunner().invoke(app, ["sync-catalogs", "--output", str(tmp_path)])
-
-    assert result.exit_code == 0
-    assert '"system_id": "0266"' in result.stdout
-    sync.assert_called_once()
-
-
 def test_sync_preserves_previous_bundle_when_late_download_fails(tmp_path: Path) -> None:
     output = tmp_path / "bundle"
     output.mkdir()

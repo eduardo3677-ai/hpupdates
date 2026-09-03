@@ -27,21 +27,20 @@ def _profile() -> MachineProfile:
     )
 
 
-def test_cli_exposes_professional_command_groups() -> None:
+def test_cli_exposes_essential_commands() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     for command in (
-        "identify",
-        "inventory",
+        "info",
         "scan",
-        "download",
-        "install",
-        "remove",
-        "software",
-        "doctor",
-        "interactive",
+        "update",
+        "download-all",
+        "softpaq-download",
+        "softpaq-install",
+        "bios-check",
+        "warranty",
     ):
-        assert command in result.stdout
+        assert command in result.stdout, f"{command!r} missing from --help"
 
 
 def test_scan_refreshes_catalog_before_using_offline_inventory(tmp_path: Path) -> None:
@@ -95,9 +94,3 @@ def test_scan_refreshes_catalog_before_using_offline_inventory(tmp_path: Path) -
 
     assert result.exit_code == 0
     assert '"status": "update_available"' in result.stdout
-
-
-def test_remove_is_dry_run_by_default() -> None:
-    result = runner.invoke(app, ["remove", "oem42.inf"])
-    assert result.exit_code == 0
-    assert "dry-run" in result.stdout.lower()

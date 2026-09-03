@@ -58,10 +58,4 @@ def test_unknown_endpoint_name_fails_closed() -> None:
         require_operational_endpoint("arbitrary")
 
 
-def test_endpoint_cli_exposes_policy_without_credentials() -> None:
-    result = CliRunner().invoke(app, ["endpoints", "--json"])
 
-    assert result.exit_code == 0
-    assert '"name": "virtual_agent_dev"' in result.stdout
-    assert '"operational": false' in result.stdout
-    assert "client_secret" not in result.stdout.casefold()
