@@ -192,9 +192,34 @@ def scan(
         bool, typer.Option("--json", help="Emit machine-readable JSON.")
     ] = False,
 ) -> None:
-    """Download the latest official HP catalog and find driver updates."""
+    """Download the latest official HP catalog and find driver updates.
+
+    Uses the HPIA catalog when available, or falls back to the SUDF API.
+    """
     backend = WindowsDriverBackend(CommandRunner())
     catalog = _fresh_catalog(backend)
+
+    # Check if this is a SUDF fallback catalog (no hardware_ids to match).
+    catalog_doc = json.loads(catalog.read_text(encoding="utf-8"))
+    source = catalog_doc.get("source", {}).get("provider", "")
+    if source == "SUDF fallback":
+        # SUDF updates don't have hardware_ids for device matching.
+        # List all available updates directly.
+        packages = catalog_doc.get("packages", [])
+        if json_output:
+            typer.echo(json.dumps(packages, indent=2))
+            return
+        table = Table("Code", "Title", "Version", "Type")
+        for pkg in packages:
+            table.add_row(
+                pkg.get("id", ""),
+                pkg.get("name", "")[:50],
+                pkg.get("version", ""),
+                pkg.get("category", ""),
+            )
+        console.print(table)
+        return
+
     recommendations = DriverService(JsonCatalog(catalog)).scan(_inventory(backend, inventory_file))
     if json_output:
         typer.echo(json.dumps([asdict(item) for item in recommendations], indent=2))
