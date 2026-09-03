@@ -244,13 +244,20 @@ def softpaq_download(
     destination.mkdir(parents=True, exist_ok=True)
     console.print(f"[cyan]Downloading {sp} to {destination}...[/]")
 
-    result = download_softpaq(update, str(destination), is_manual=True)
+    local_path = str(destination / f"{sp}.exe")
+    result = download_softpaq(
+        url=url,
+        local_path=local_path,
+        is_manual=True,
+    )
     if result.status == DownloadStatus.Downloaded:
         console.print(f"[green]Downloaded: {result.file_path}[/]")
     elif result.status == DownloadStatus.AlreadyDownloaded:
         console.print(f"[green]Already downloaded: {result.file_path}[/]")
     else:
         console.print(f"[red]Download failed: {result.status.name}[/]")
+        if result.error_code:
+            console.print(f"[dim]  Error: {result.error_code}[/]")
         raise typer.Exit(1)
 
 
@@ -585,7 +592,8 @@ def download_all(
         )
 
         try:
-            result = download_softpaq(update_obj, str(destination), is_manual=True)
+            dl_path = str(destination / f"{code}.exe")
+            result = download_softpaq(url=url, local_path=dl_path, is_manual=True)
             if result.status in (DownloadStatus.Downloaded, DownloadStatus.AlreadyDownloaded):
                 console.print(f"    [green]OK: {result.file_path}[/]")
                 results.append({"code": code, "title": title, "file": result.file_path, "status": "ok"})
