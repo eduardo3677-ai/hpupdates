@@ -233,8 +233,9 @@ def softpaq_download(
 
     update = SoftPaqUpdate(
         guid=sp,
-        code=sp,
-        title=f"SoftPaq SP{sp}",
+        sp_id=sp,
+        sp_name=f"SoftPaq SP{sp}",
+        sp_version="0",
         url_result=url,
         url_result_ui=url,
         checksum=checksum,
@@ -274,8 +275,9 @@ def softpaq_install(
 
     update = SoftPaqUpdate(
         guid=sp,
-        code=sp,
-        title=f"SoftPaq SP{sp}",
+        sp_id=sp,
+        sp_name=f"SoftPaq SP{sp}",
+        sp_version="0",
         url_result=url,
         url_result_ui=url,
         silent_install_string="/s /e /f" if silent else "",
