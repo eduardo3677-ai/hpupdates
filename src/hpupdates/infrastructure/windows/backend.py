@@ -13,8 +13,10 @@ from hpupdates.models.models import Device, InstalledSoftware, MachineProfile
 
 
 class CommandRunner:
-    def run(self, command: list[str]) -> str:
-        completed = subprocess.run(command, check=True, text=True, capture_output=True)
+    def run(self, command: list[str], timeout: int = 120) -> str:
+        completed = subprocess.run(
+            command, check=True, text=True, capture_output=True, timeout=timeout
+        )
         return completed.stdout
 
 

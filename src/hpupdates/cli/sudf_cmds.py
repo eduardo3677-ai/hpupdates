@@ -318,6 +318,7 @@ def info(
 
     All auto-detected — no arguments needed.
     """
+    console.print("[cyan]Detecting device profile...[/]")
     profile = detect_profile_or_exit()
 
     if json_output:

@@ -127,9 +127,11 @@ def detect_profile_or_exit() -> DeviceProfile:
     try:
         return detect_profile()
     except Exception as exc:
-        print(f"Error: Cannot detect device profile: {exc}", file=sys.stderr)
+        # Print to BOTH stdout and stderr so the user always sees it.
+        msg = f"Error: Cannot detect device profile: {exc}"
+        print(msg)
+        print(msg, file=sys.stderr)
         print(
-            "This command must run on a Windows HP device with PowerShell available.",
-            file=sys.stderr,
+            "This command must run on a Windows HP device with PowerShell available."
         )
         raise SystemExit(1) from exc

@@ -27,9 +27,30 @@ app = typer.Typer(
 
 console = Console()
 
-# Register all commands from submodules
+# Register all commands from submodules, preserving command names.
+# Typer derives the name from the function when @app.command() is used without
+# an explicit name, but that derived name is stored on the *sub-app's* command
+# info, not propagated when manually copying registered_commands.  We re-derive
+# the name from the callback function name (replacing _ with -) when the name
+# is missing.
+import re as _re
+
+def _kebab(name: str) -> str:
+    return name.replace("_", "-")
+
 for _cmd_app in (_cat, _sys, _sudf, _dev, _web):
     for _info in _cmd_app.registered_commands:
+        if not _info.name and _info.callback:
+            _info.name = _kebab(_info.callback.__name__)
+        # Skip duplicate commands — keep the canonical version.
+        # doctor/endpoints: canonical in system_cmds (skip catalog_cmds copy).
+        # os-code/pnp-devices: canonical in sudf_cmds (skip device_cmds copy).
+        if _info.name and _info.callback:
+            _mod = _info.callback.__module__
+            if _info.name in {"doctor", "endpoints"} and _mod.endswith("catalog_cmds"):
+                continue
+            if _info.name in {"os-code", "pnp-devices"} and _mod.endswith("device_cmds"):
+                continue
         app.registered_commands.append(_info)
 
 
