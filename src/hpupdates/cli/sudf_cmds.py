@@ -479,13 +479,16 @@ def update_all(
 
         update_obj = SoftPaqUpdate(
             guid=str(u.get("Guid", code)),
-            code=code,
-            title=title,
-            version=version,
+            sp_id=code,
+            sp_name=title,
+            sp_version=version,
             url_result=url,
             url_result_ui=url,
             silent_install_string=str(u.get("SilentInstall", "")),
-            return_codes=str(u.get("ReturnCodes", "")),
+            no_reboot_success_return_code=str(u.get("NoRebootSuccessReturnCode", "")),
+            no_reboot_failure_return_code=str(u.get("NoRebootFailureReturnCode", "")),
+            reboot_success_return_code=str(u.get("RebootSuccessReturnCode", "")),
+            no_reboot_cancel_return_code=str(u.get("NoRebootCancelReturnCode", "")),
         )
 
         params = InstallParameters(
