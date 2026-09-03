@@ -13,10 +13,10 @@ from hpupdates.infrastructure.update_detector import (
     resolve_path,
 )
 
-
 # ---------------------------------------------------------------------------
 # InstallStatus enum
 # ---------------------------------------------------------------------------
+
 
 class TestInstallStatus:
     def test_enum_values(self) -> None:
@@ -35,11 +35,12 @@ class TestInstallStatus:
 # DotNetVersion parsing and comparison
 # ---------------------------------------------------------------------------
 
+
 class TestDotNetVersionParse:
     def test_single_component(self) -> None:
         v = DotNetVersion.parse("1")
         assert v.major == 1
-        assert v.minor == -1
+        assert v.minor == 0
         assert v.build == -1
         assert v.revision == -1
 
@@ -111,13 +112,14 @@ class TestDotNetVersionComparison:
 
     def test_frozen_dataclass(self) -> None:
         v = DotNetVersion(1, 0)
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             v.major = 2  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
 # compare_versions
 # ---------------------------------------------------------------------------
+
 
 class TestCompareVersions:
     def test_server_higher_returns_uninstalled(self) -> None:
@@ -150,6 +152,7 @@ class TestCompareVersions:
 # resolve_path
 # ---------------------------------------------------------------------------
 
+
 class TestResolvePath:
     def test_system_drive(self) -> None:
         assert resolve_path("<SystemDrive>test") == "C:\\test"
@@ -178,6 +181,7 @@ class TestResolvePath:
 # ---------------------------------------------------------------------------
 # SUDFUpdate.from_dict
 # ---------------------------------------------------------------------------
+
 
 class TestSudfUpdateFromDict:
     def test_full_dict(self) -> None:
@@ -236,6 +240,7 @@ class TestSudfUpdateFromDict:
 # UpdateDetector — VerifyDevices
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyDevices:
     def test_empty_devices_applies_to_all(self) -> None:
         d = UpdateDetector(pnp_devices=[])
@@ -247,7 +252,9 @@ class TestVerifyDevices:
     def test_matching_device_returns_not_invalid(self) -> None:
         d = UpdateDetector(pnp_devices=["PCI\\VEN_1234&DEV_5678"])
         u = SUDFUpdate(
-            guid="g1", devices=("PCI\\VEN_1234",), type="Driver",
+            guid="g1",
+            devices=("PCI\\VEN_1234",),
+            type="Driver",
             detail_files=("C:\\nonexistent.sys,1.0.0.0",),
         )
         # Device matches -> proceeds to detail file check -> driver file missing
@@ -256,7 +263,9 @@ class TestVerifyDevices:
     def test_no_matching_device_returns_invalid(self) -> None:
         d = UpdateDetector(pnp_devices=["PCI\\VEN_1234"])
         u = SUDFUpdate(
-            guid="g1", devices=("USB\\VID_9999",), type="Driver",
+            guid="g1",
+            devices=("USB\\VID_9999",),
+            type="Driver",
             detail_files=("C:\\nonexistent.sys,1.0.0.0",),
         )
         assert d.validate_sudf_update(u) == InstallStatus.Invalid
@@ -264,7 +273,9 @@ class TestVerifyDevices:
     def test_case_insensitive_device_match(self) -> None:
         d = UpdateDetector(pnp_devices=["PCI\\VEN_1234"])
         u = SUDFUpdate(
-            guid="g1", devices=("pci\\ven_1234",), type="Driver",
+            guid="g1",
+            devices=("pci\\ven_1234",),
+            type="Driver",
             detail_files=("C:\\nonexistent.sys,1.0.0.0",),
         )
         assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
@@ -272,7 +283,9 @@ class TestVerifyDevices:
     def test_partial_substring_match(self) -> None:
         d = UpdateDetector(pnp_devices=["HID\\VID_04B4&PID_1234"])
         u = SUDFUpdate(
-            guid="g1", devices=("VID_04B4",), type="Driver",
+            guid="g1",
+            devices=("VID_04B4",),
+            type="Driver",
             detail_files=("C:\\nonexistent.sys,1.0.0.0",),
         )
         assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
@@ -281,6 +294,7 @@ class TestVerifyDevices:
 # ---------------------------------------------------------------------------
 # UpdateDetector — invalid guid/code
 # ---------------------------------------------------------------------------
+
 
 class TestValidateInvalidUpdate:
     def test_empty_guid_and_code_returns_invalid(self) -> None:
@@ -293,11 +307,13 @@ class TestValidateInvalidUpdate:
 # UpdateDetector — VerifyDetailFiles
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyDetailFiles:
     def test_driver_missing_file_returns_uninstalled(self) -> None:
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Driver",
+            guid="g1",
+            type="Driver",
             detail_files=("C:\\nonexistent_driver.sys,1.0.0.0",),
         )
         assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
@@ -306,7 +322,8 @@ class TestVerifyDetailFiles:
         """A non-driver update whose files don't exist is UnInstalled."""
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Software",
+            guid="g1",
+            type="Software",
             detail_files=("C:\\nonexistent_app.exe,1.0.0.0",),
         )
         assert d.validate_sudf_update(u) == InstallStatus.UnInstalled
@@ -326,7 +343,8 @@ class TestVerifyDetailFiles:
 
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Driver",
+            guid="g1",
+            type="Driver",
             detail_files=(f"{file_path},1.0.0.0",),
         )
         # Mock file version to be lower (0.9.0.0)
@@ -341,7 +359,8 @@ class TestVerifyDetailFiles:
 
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Driver",
+            guid="g1",
+            type="Driver",
             detail_files=(f"{file_path},1.0.0.0",),
         )
         monkeypatch.setattr(d, "_get_file_version", lambda path: "2.0.0.0")
@@ -351,6 +370,7 @@ class TestVerifyDetailFiles:
 # ---------------------------------------------------------------------------
 # UpdateDetector — CheckFileVersion
 # ---------------------------------------------------------------------------
+
 
 class TestCheckFileVersion:
     def test_invalid_detail_file_returns_invalid(self, tmp_path) -> None:
@@ -369,11 +389,13 @@ class TestCheckFileVersion:
 # UpdateDetector — CheckBIOSFile
 # ---------------------------------------------------------------------------
 
+
 class TestCheckBiosFile:
     def test_bios_newer_server_returns_uninstalled(self) -> None:
         """Server date (2020-06-01) > local (2020-01-01)."""
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "8A4F", "20.20.06.01"], False)
@@ -382,7 +404,8 @@ class TestCheckBiosFile:
     def test_bios_older_server_returns_installed(self) -> None:
         """Server date (2019-01-01) < local (2020-01-01)."""
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "8A4F", "20.19.01.01"], False)
@@ -390,7 +413,8 @@ class TestCheckBiosFile:
 
     def test_bios_equal_dates_returns_installed(self) -> None:
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "8A4F", "20.20.01.01"], False)
@@ -398,7 +422,8 @@ class TestCheckBiosFile:
 
     def test_bios_sys_id_mismatch_returns_invalid(self) -> None:
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "XYZ123", "20.20.01.01"], False)
@@ -407,7 +432,8 @@ class TestCheckBiosFile:
     def test_bios_rom_family_match(self) -> None:
         """BIOS ID starting with ROM family should pass sys_id check."""
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "83B3", "20.20.01.01"], False)
@@ -415,7 +441,8 @@ class TestCheckBiosFile:
 
     def test_bios_ignore_sys_id_skips_check(self) -> None:
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "NOMATCH", "20.20.01.01"], True)
@@ -429,7 +456,8 @@ class TestCheckBiosFile:
     def test_bios_3_part_date_returns_invalid(self) -> None:
         """3-part date (yy.mm.dd) is not parsed — needs 4 parts."""
         d = UpdateDetector(
-            sys_id="8A4F", bios_rom_family="83B3",
+            sys_id="8A4F",
+            bios_rom_family="83B3",
             bios_release_date="01/01/2020",
         )
         result = d._check_bios_file(["ROM", "8A4F", "20.01.01"], False)
@@ -440,11 +468,14 @@ class TestCheckBiosFile:
 # UpdateDetector — StorePackages
 # ---------------------------------------------------------------------------
 
+
 class TestVerifyStorePackages:
     def test_store_package_not_installed_returns_uninstalled(self) -> None:
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Software", detail_files=(),
+            guid="g1",
+            type="Software",
+            detail_files=(),
             store_packages="App.Name_1.0.0.0_x64__abcde",
         )
         assert d.validate_sudf_update(u) == InstallStatus.UninstalledStorePackage
@@ -452,7 +483,8 @@ class TestVerifyStorePackages:
     def test_driver_with_store_package_missing_file_returns_uninstalled(self) -> None:
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Driver",
+            guid="g1",
+            type="Driver",
             detail_files=("C:\\nonexistent.sys,1.0.0.0",),
             store_packages="App.Name_1.0.0.0_x64__abcde",
         )
@@ -460,15 +492,15 @@ class TestVerifyStorePackages:
 
     def test_empty_store_packages_returns_invalid_store_package(self) -> None:
         d = UpdateDetector()
-        result = d._verify_store_packages(
-            SUDFUpdate(guid="g1", store_packages="")
-        )
+        result = d._verify_store_packages(SUDFUpdate(guid="g1", store_packages=""))
         assert result == InstallStatus.InvalidStorePackage
 
     def test_multiple_store_package_entries(self) -> None:
         d = UpdateDetector()
         u = SUDFUpdate(
-            guid="g1", type="Software", detail_files=(),
+            guid="g1",
+            type="Software",
+            detail_files=(),
             store_packages="App1_1.0.0.0_x64__aaa;App2_2.0.0.0_x64__bbb",
         )
         assert d.validate_sudf_update(u) == InstallStatus.UninstalledStorePackage

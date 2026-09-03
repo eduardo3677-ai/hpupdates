@@ -16,15 +16,9 @@ console = Console()
 
 @app.command("warranty")
 def warranty(
-    serial_number: Annotated[
-        str, typer.Option("--serial", help="Device serial number.")
-    ] = "",
-    product_number: Annotated[
-        str, typer.Option("--product", help="Device product number.")
-    ] = "",
-    device_id: Annotated[
-        str, typer.Option("--device-id", help="Device identifier.")
-    ] = "",
+    serial_number: Annotated[str, typer.Option("--serial", help="Device serial number.")] = "",
+    product_number: Annotated[str, typer.Option("--product", help="Device product number.")] = "",
+    device_id: Annotated[str, typer.Option("--device-id", help="Device identifier.")] = "",
     json_output: Annotated[
         bool, typer.Option("--json", help="Emit machine-readable JSON.")
     ] = False,
@@ -61,4 +55,6 @@ def warranty(
     typer.echo(f"Product Number: {result.get('ProductNumber', product_number)}")
     typer.echo(f"Warranty Start: {result.get('WarrantyStartDate', 'N/A')}")
     typer.echo(f"Warranty End: {result.get('WarrantyEndDate', 'N/A')}")
-    typer.echo(f"Warranty Status: {'active' if result.get('WarrantyStatus') else 'unknown/expired'}")
+    typer.echo(
+        f"Warranty Status: {'active' if result.get('WarrantyStatus') else 'unknown/expired'}"
+    )

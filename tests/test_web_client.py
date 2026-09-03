@@ -15,9 +15,6 @@ from hpupdates.infrastructure.web import (
     CONTENT_SERVER_SANDBOX,
     DEVICE_TEMPLATE,
     EXTERNAL_URL_IDS,
-    HpsaResponse,
-    HpsaSettings,
-    HpsaWebClient,
     LAUNCHER_ACTIONS,
     METRICS_MASTIFF_TIMEOUT,
     METRICS_OVERALL_TIMEOUT,
@@ -38,6 +35,8 @@ from hpupdates.infrastructure.web import (
     UPDATE_STEP_CREATE_RESTORE_POINT,
     UPDATE_STEP_DOWNLOAD_INSTALL,
     WARRANTY_KEYS,
+    HpsaResponse,
+    HpsaWebClient,
     _basic_object,
     _is_local_device,
     build_iframe_url,
@@ -50,19 +49,17 @@ from hpupdates.infrastructure.web import (
     support_category,
 )
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
 
 class TestConstants:
     def test_action_dispatch_has_53_actions(self) -> None:
         assert len(ACTION_DISPATCH) == 53
 
     def test_content_servers(self) -> None:
-        assert CONTENT_SERVER_PROD == (
-            "https://content.methone.hpcloud.hp.net/messages/HpsaSpos"
-        )
+        assert CONTENT_SERVER_PROD == ("https://content.methone.hpcloud.hp.net/messages/HpsaSpos")
         assert CONTENT_SERVER_SANDBOX == (
             "https://content-sbx.methone.hpcloud.hp.net/messages/HpsaSpos"
         )
@@ -102,8 +99,15 @@ class TestConstants:
         assert SECURITY_PRODUCT_TYPES == [2, 3, 5]
 
     def test_security_properties(self) -> None:
-        for prop in ["Firewall", "Antivirus", "Antispyware", "Internet",
-                      "Service", "Autoupdate", "UAC"]:
+        for prop in [
+            "Firewall",
+            "Antivirus",
+            "Antispyware",
+            "Internet",
+            "Service",
+            "Autoupdate",
+            "UAC",
+        ]:
             assert prop in SECURITY_PROPERTIES
 
     def test_warranty_keys(self) -> None:
@@ -136,17 +140,21 @@ class TestConstants:
 # Product type -> category mapping
 # ---------------------------------------------------------------------------
 
+
 class TestProductTypeToCategory:
-    @pytest.mark.parametrize("ptype,expected", [
-        (PRODUCT_TYPE_NOTEBOOK, "hppc_"),
-        (PRODUCT_TYPE_TABLET, "hppc_"),
-        (PRODUCT_TYPE_DESKTOP, "hppc_"),
-        (PRODUCT_TYPE_MOBILE, "mobile_"),
-        (PRODUCT_TYPE_MONITOR, "monitor_"),
-        (PRODUCT_TYPE_SCANNER, "scanner_"),
-        (PRODUCT_TYPE_PRINTER, "printer_"),
-        (PRODUCT_TYPE_CALCULATOR, "calculator_"),
-    ])
+    @pytest.mark.parametrize(
+        "ptype,expected",
+        [
+            (PRODUCT_TYPE_NOTEBOOK, "hppc_"),
+            (PRODUCT_TYPE_TABLET, "hppc_"),
+            (PRODUCT_TYPE_DESKTOP, "hppc_"),
+            (PRODUCT_TYPE_MOBILE, "mobile_"),
+            (PRODUCT_TYPE_MONITOR, "monitor_"),
+            (PRODUCT_TYPE_SCANNER, "scanner_"),
+            (PRODUCT_TYPE_PRINTER, "printer_"),
+            (PRODUCT_TYPE_CALCULATOR, "calculator_"),
+        ],
+    )
     def test_known_types(self, ptype: int, expected: str) -> None:
         assert product_type_to_category_prefix(ptype) == expected
 
@@ -167,6 +175,7 @@ class TestProductTypeToCategory:
 # Content server and iframe URLs
 # ---------------------------------------------------------------------------
 
+
 class TestContentServer:
     def test_get_content_server_prod(self) -> None:
         assert get_content_server(False) == CONTENT_SERVER_PROD
@@ -184,7 +193,9 @@ class TestContentServer:
 
     def test_build_iframe_url_override(self) -> None:
         url = build_iframe_url(
-            "obj", "folder", "file",
+            "obj",
+            "folder",
+            "file",
             iframe_url_override="https://custom.hp.com",
         )
         assert url.startswith("https://custom.hp.com/obj/folder/file.html?id=")
@@ -206,6 +217,7 @@ class TestContentServer:
 # inject_custom_attributes
 # ---------------------------------------------------------------------------
 
+
 class TestInjectCustomAttributes:
     def test_replaces_input_value(self) -> None:
         html = '<input hpsfcustom="SerialNumber" value="" />'
@@ -219,8 +231,7 @@ class TestInjectCustomAttributes:
 
     def test_replaces_multiple_attributes(self) -> None:
         html = (
-            '<input hpsfcustom="SerialNumber" value="" />'
-            '<span hpsfcustom="ProductName">old</span>'
+            '<input hpsfcustom="SerialNumber" value="" /><span hpsfcustom="ProductName">old</span>'
         )
         result = inject_custom_attributes(
             html, {"SerialNumber": "SN123", "ProductName": "EliteBook"}
@@ -229,7 +240,7 @@ class TestInjectCustomAttributes:
         assert ">EliteBook<" in result
 
     def test_no_match_returns_unchanged(self) -> None:
-        html = '<div>no custom attrs</div>'
+        html = "<div>no custom attrs</div>"
         result = inject_custom_attributes(html, {"SerialNumber": "SN123"})
         assert result == html
 
@@ -243,11 +254,10 @@ class TestInjectCustomAttributes:
 # Launcher URL parsing and building
 # ---------------------------------------------------------------------------
 
+
 class TestParseLauncherUrl:
     def test_parse_with_params(self) -> None:
-        action, params = parse_launcher_url(
-            "hpsalauncher://LearnWin11&SerialNumber=ABC123"
-        )
+        action, params = parse_launcher_url("hpsalauncher://LearnWin11&SerialNumber=ABC123")
         assert action == "LearnWin11"
         assert params == {"SerialNumber": "ABC123"}
 
@@ -305,6 +315,7 @@ class TestBuildLauncherUrl:
 # HpsaResponse
 # ---------------------------------------------------------------------------
 
+
 class TestHpsaResponse:
     def test_empty_is_success(self) -> None:
         r = HpsaResponse()
@@ -336,6 +347,7 @@ class TestHpsaResponse:
 # ---------------------------------------------------------------------------
 # _basic_object and _is_local_device
 # ---------------------------------------------------------------------------
+
 
 class TestBasicObject:
     def test_empty_object(self) -> None:
@@ -371,6 +383,7 @@ class TestIsLocalDevice:
 # ---------------------------------------------------------------------------
 # HpsaWebClient — device operations
 # ---------------------------------------------------------------------------
+
 
 class TestWebClientDevices:
     def test_devices_empty_without_windows_backend(self) -> None:
@@ -412,6 +425,7 @@ class TestWebClientDevices:
 # ---------------------------------------------------------------------------
 # HpsaWebClient — scan operations
 # ---------------------------------------------------------------------------
+
 
 class TestWebClientScan:
     def test_scan_messages_no_sudf(self) -> None:
@@ -466,6 +480,7 @@ class TestWebClientScan:
 # ---------------------------------------------------------------------------
 # HpsaWebClient — update operations
 # ---------------------------------------------------------------------------
+
 
 class TestWebClientUpdates:
     def test_get_all_updates_empty(self) -> None:
@@ -581,6 +596,7 @@ class TestWebClientUpdates:
 # HpsaWebClient — messages
 # ---------------------------------------------------------------------------
 
+
 class TestWebClientMessages:
     def test_get_all_messages(self) -> None:
         c = HpsaWebClient()
@@ -610,6 +626,7 @@ class TestWebClientMessages:
 # ---------------------------------------------------------------------------
 # HpsaWebClient — warranty, health, specs
 # ---------------------------------------------------------------------------
+
 
 class TestWebClientWarrantyHealth:
     def test_device_warranty(self) -> None:
@@ -644,6 +661,7 @@ class TestWebClientWarrantyHealth:
 # HpsaWebClient — security
 # ---------------------------------------------------------------------------
 
+
 class TestWebClientSecurity:
     def test_get_security_notebook(self) -> None:
         c = HpsaWebClient()
@@ -677,6 +695,7 @@ class TestWebClientSecurity:
 # HpsaWebClient — settings
 # ---------------------------------------------------------------------------
 
+
 class TestWebClientSettings:
     def test_get_settings_defaults(self) -> None:
         c = HpsaWebClient()
@@ -689,10 +708,12 @@ class TestWebClientSettings:
 
     def test_set_settings_updates_values(self) -> None:
         c = HpsaWebClient()
-        c.set_settings({
-            "ShowTaskbarIconCheckBox": False,
-            "ShareUsageData": True,
-        })
+        c.set_settings(
+            {
+                "ShowTaskbarIconCheckBox": False,
+                "ShareUsageData": True,
+            }
+        )
         result = c.get_settings()
         assert result["ShowTaskbarIconCheckBox"] is False
         assert result["ShareUsageData"] is True
@@ -714,6 +735,7 @@ class TestWebClientSettings:
 # HpsaWebClient — profile
 # ---------------------------------------------------------------------------
 
+
 class TestWebClientProfile:
     def test_get_profile_defaults(self) -> None:
         c = HpsaWebClient()
@@ -724,13 +746,15 @@ class TestWebClientProfile:
 
     def test_set_profile(self) -> None:
         c = HpsaWebClient()
-        result = c.set_profile({
-            "Country": "US",
-            "FirstName": "John",
-            "LastName": "Doe",
-            "Email": "john@example.com",
-            "EmailOffers": True,
-        })
+        result = c.set_profile(
+            {
+                "Country": "US",
+                "FirstName": "John",
+                "LastName": "Doe",
+                "Email": "john@example.com",
+                "EmailOffers": True,
+            }
+        )
         assert result["FaultItemList"] == []
 
     def test_is_user_logged_in(self) -> None:
@@ -746,6 +770,7 @@ class TestWebClientProfile:
 # ---------------------------------------------------------------------------
 # HpsaWebClient — cases
 # ---------------------------------------------------------------------------
+
 
 class TestWebClientCases:
     def test_create_case(self) -> None:
@@ -798,6 +823,7 @@ class TestWebClientCases:
 # HpsaWebClient — launcher/external
 # ---------------------------------------------------------------------------
 
+
 class TestWebClientLauncher:
     def test_get_external_url(self) -> None:
         c = HpsaWebClient()
@@ -843,6 +869,7 @@ class TestWebClientLauncher:
 # ---------------------------------------------------------------------------
 # dispatch_action
 # ---------------------------------------------------------------------------
+
 
 class TestDispatchAction:
     def test_dispatch_known_action(self) -> None:

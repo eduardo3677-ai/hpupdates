@@ -112,8 +112,8 @@ _RESOURCES_SERVER_DEFAULT = "content.methone.hpcloud.hp.net"
 # - sudf-itg-resources.hpcloud.hp.com (integration/test, used by same binaries)
 # These serve the same content but through a different CDN/host.
 _RESOURCES_SERVER_ALTERNATIVES = [
-    "content.methone.hpcloud.hp.net",     # primary (from HP.SUDFClient.dll)
-    "sudf-resources.hpcloud.hp.com",       # alternative (from BingPopup, HPPerformanceTuneup)
+    "content.methone.hpcloud.hp.net",  # primary (from HP.SUDFClient.dll)
+    "sudf-resources.hpcloud.hp.com",  # alternative (from BingPopup, HPPerformanceTuneup)
 ]
 
 # HP Support Framework API endpoint (from HP.SupportFramework.Common.dll)
@@ -167,6 +167,7 @@ _DPAPI_ENTROPY = "gi2FGj2hw9o$"
 # Endpoint environments (from r2 analysis of get_ServerHost @ 0x1000e410)
 # ---------------------------------------------------------------------------
 
+
 class SudfEnvironment(StrEnum):
     """SUDF endpoint environments.
 
@@ -214,9 +215,7 @@ def _resolve_endpoint(
 
     # custom
     if not custom_url:
-        raise SudfAuthenticationError(
-            "a custom URL is required when environment='custom'"
-        )
+        raise SudfAuthenticationError("a custom URL is required when environment='custom'")
     url = custom_url.strip()
     if not url.startswith("https://"):
         url = "https://" + url.removeprefix("http://")
@@ -232,6 +231,7 @@ def _resolve_endpoint(
 # ---------------------------------------------------------------------------
 # AES decryption logic (mirrors DataProtectTool.AesDecryptString)
 # ---------------------------------------------------------------------------
+
 
 def _sha256_bytes(data: str) -> bytes:
     """SHA256 over UTF-8 bytes of a string, matching C# GetSHA256Hash."""
@@ -276,6 +276,7 @@ def decrypt_embedded_api_key(version: str = "V4") -> str:
 # Additional cryptographic operations (from DataProtectTool.cs, SharedCommon.cs)
 # ---------------------------------------------------------------------------
 
+
 def create_sha256_cache_id(cache_material: str) -> str:
     """Create a SHA-256 cache ID, matching WebUtil.CreateSHA256.
 
@@ -295,6 +296,7 @@ def to_guid(string_to_guid: str) -> str:
       return new Guid(hash)
     """
     import uuid
+
     sha1 = hashlib.sha1(string_to_guid.encode("utf-8")).digest()
     return str(uuid.UUID(bytes=sha1[:16]))
 
@@ -364,19 +366,12 @@ def sign_request(
         f"x-api-key:{api_key}\n"
     )
     canonical_request = (
-        f"{method}\n{api_name}\n\n{canonical_headers}\n"
-        f"{SIGNED_HEADERS}\n{payload_hash}"
+        f"{method}\n{api_name}\n\n{canonical_headers}\n{SIGNED_HEADERS}\n{payload_hash}"
     )
-    canonical_request_hash = hashlib.sha256(
-        canonical_request.encode("utf-8")
-    ).hexdigest()
-    string_to_sign = (
-        f"{AWS_ALGORITHM}\n{amz_date}\n{scope}\n{canonical_request_hash}"
-    )
+    canonical_request_hash = hashlib.sha256(canonical_request.encode("utf-8")).hexdigest()
+    string_to_sign = f"{AWS_ALGORITHM}\n{amz_date}\n{scope}\n{canonical_request_hash}"
     signing_key = get_signature_key(secret, date_stamp)
-    signature = hmac.new(
-        signing_key, string_to_sign.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(signing_key, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
     return (
         f"{AWS_ALGORITHM} Credential=/{scope}, "
         f"SignedHeaders={SIGNED_HEADERS}, Signature={signature}"
@@ -386,6 +381,7 @@ def sign_request(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 class SudfAuthenticationError(RuntimeError):
     """Raised when a SUDF request cannot be authenticated or executed."""
@@ -416,6 +412,7 @@ class SudfCredentials:
 
 # --- Request models (from decompiled C# DataContract classes) ---
 
+
 @dataclass(frozen=True, slots=True)
 class SudfRequest:
     """Request for GetUpdatesBySysId (from GetUpdatesBySysIdRequest.cs).
@@ -443,8 +440,7 @@ class SudfRequest:
     def cache_material(self) -> str:
         data = self.payload()
         return "".join(
-            data[key]
-            for key in ("SysId", "UseCase", "OS", "Auto", "Country", "Language")
+            data[key] for key in ("SysId", "UseCase", "OS", "Auto", "Country", "Language")
         )
 
 
@@ -528,11 +524,13 @@ class MessagesRequest:
 #   GetUpdatesBySysId  (DownloadSUDFUpdateTask.cs:73)
 #   GetPrinterUpdates   (DownloadPrinterUpdateTask.cs:64)
 #   GetMessages         (from GetMessagesRequest.cs / GetMessagesResponse.cs)
-_VALID_OPERATIONS = frozenset({
-    "GetUpdatesBySysId",
-    "GetPrinterUpdates",
-    "GetMessages",
-})
+_VALID_OPERATIONS = frozenset(
+    {
+        "GetUpdatesBySysId",
+        "GetPrinterUpdates",
+        "GetMessages",
+    }
+)
 
 
 class SudfClient:
@@ -571,12 +569,11 @@ class SudfClient:
     ) -> None:
         self.credentials = credentials or self._default_credentials()
         self.environment = (
-            environment if isinstance(environment, SudfEnvironment)
+            environment
+            if isinstance(environment, SudfEnvironment)
             else SudfEnvironment(environment)
         )
-        self.base_url, self.host = _resolve_endpoint(
-            self.environment, custom_url
-        )
+        self.base_url, self.host = _resolve_endpoint(self.environment, custom_url)
         self.client = client or httpx.Client(follow_redirects=False, timeout=60.0)
         self.clock = clock or (lambda: datetime.now(UTC))
         self.max_response_bytes = max_response_bytes
@@ -601,22 +598,16 @@ class SudfClient:
         Calls POST {base_url}/GetUpdatesBySysId with the request payload.
         Returns the parsed JSON response (UpdatesMeta.json content).
         """
-        return self._post(
-            "GetUpdatesBySysId", request.payload(), request.cache_material()
-        )
+        return self._post("GetUpdatesBySysId", request.payload(), request.cache_material())
 
-    def get_printer_updates(
-        self, request: PrinterUpdatesRequest
-    ) -> Mapping[str, Any]:
+    def get_printer_updates(self, request: PrinterUpdatesRequest) -> Mapping[str, Any]:
         """Search for printer driver updates.
 
         Calls POST {base_url}/GetPrinterUpdates with the request payload.
         Returns the parsed JSON response with PrinterUpdate entries.
         Each entry has FtpURL, HttpURL, InstallCmd, SilentInstallCmd, etc.
         """
-        return self._post(
-            "GetPrinterUpdates", request.payload(), request.cache_material()
-        )
+        return self._post("GetPrinterUpdates", request.payload(), request.cache_material())
 
     def get_messages(self, request: MessagesRequest) -> Mapping[str, Any]:
         """Retrieve notification messages/alerts.
@@ -624,9 +615,7 @@ class SudfClient:
         Calls POST {base_url}/GetMessages with the request payload.
         Returns the parsed JSON response with message entries.
         """
-        return self._post(
-            "GetMessages", request.payload(), request.cache_material()
-        )
+        return self._post("GetMessages", request.payload(), request.cache_material())
 
     # -- Driver download --
 
@@ -638,7 +627,7 @@ class SudfClient:
         before any download attempt.
         """
         if url.startswith("http://"):
-            return "https://" + url[len("http://"):]
+            return "https://" + url[len("http://") :]
         return url
 
     def download_driver(
@@ -662,9 +651,7 @@ class SudfClient:
         if not url:
             url = update.get("FtpURL", "") or update.get("ftpURL", "")
         if not url:
-            raise SudfDownloadError(
-                "update entry has no HttpURL or FtpURL"
-            )
+            raise SudfDownloadError("update entry has no HttpURL or FtpURL")
 
         # Force HTTPS (from HP.UpdateClient.dll)
         url = self._force_https(url)
@@ -681,12 +668,11 @@ class SudfClient:
         if url.startswith("ftp://"):
             # FTP download — use urllib
             import urllib.request
+
             try:
                 urllib.request.urlretrieve(url, dest_path)
             except Exception as exc:
-                raise SudfDownloadError(
-                    f"FTP download failed: {exc}"
-                ) from exc
+                raise SudfDownloadError(f"FTP download failed: {exc}") from exc
         else:
             # HTTP/HTTPS download with streaming
             try:
@@ -696,9 +682,7 @@ class SudfClient:
                         for chunk in resp.iter_bytes(chunk_size=65536):
                             f.write(chunk)
             except httpx.HTTPError as exc:
-                raise SudfDownloadError(
-                    f"HTTP download failed: {exc}"
-                ) from exc
+                raise SudfDownloadError(f"HTTP download failed: {exc}") from exc
 
         return dest_path
 
@@ -734,9 +718,7 @@ class SudfClient:
                     for chunk in resp.iter_bytes(chunk_size=65536):
                         f.write(chunk)
         except httpx.HTTPError as exc:
-            raise SudfDownloadError(
-                f"resource download failed: {exc}"
-            ) from exc
+            raise SudfDownloadError(f"resource download failed: {exc}") from exc
 
         return dest_path
 
@@ -772,9 +754,7 @@ class SudfClient:
                 errors.append(f"{server}: {exc}")
                 continue
 
-        raise SudfDownloadError(
-            f"all resource servers failed for {path}: {'; '.join(errors)}"
-        )
+        raise SudfDownloadError(f"all resource servers failed for {path}: {'; '.join(errors)}")
 
     def download_message_cab(
         self,
@@ -846,15 +826,11 @@ class SudfClient:
             resp = self.client.get(url, timeout=30.0)
             resp.raise_for_status()
         except httpx.HTTPError as exc:
-            raise SudfDownloadError(
-                f"checksum service request failed: {exc}"
-            ) from exc
+            raise SudfDownloadError(f"checksum service request failed: {exc}") from exc
 
         expected = resp.text.strip().lower()
         if not expected:
-            raise SudfDownloadError(
-                f"checksum service returned empty response for {softpaq_id}"
-            )
+            raise SudfDownloadError(f"checksum service returned empty response for {softpaq_id}")
 
         local_md5 = hashlib.md5(local_path.read_bytes()).hexdigest()
         return local_md5 == expected
@@ -878,9 +854,7 @@ class SudfClient:
 
         Returns (driver_path, signature_path_or_none).
         """
-        driver_path = self.download_driver(
-            update, dest_dir, prefer_http=prefer_http
-        )
+        driver_path = self.download_driver(update, dest_dir, prefer_http=prefer_http)
 
         # Attempt to download the .hpsign signature file
         sig_path = None
@@ -911,12 +885,8 @@ class SudfClient:
         # Optional checksum verification
         if verify_checksum and softpaq_id:
             try:
-                if not self.verify_softpaq_checksum(
-                    str(softpaq_id), driver_path
-                ):
-                    raise SudfDownloadError(
-                        f"checksum mismatch for {softpaq_id}"
-                    )
+                if not self.verify_softpaq_checksum(str(softpaq_id), driver_path):
+                    raise SudfDownloadError(f"checksum mismatch for {softpaq_id}")
             except SudfDownloadError:
                 raise
             except Exception:
@@ -934,9 +904,7 @@ class SudfClient:
                 f"unknown SUDF operation: {operation!r}. "
                 f"Valid: {', '.join(sorted(_VALID_OPERATIONS))}"
             )
-        body = json.dumps(
-            payload, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
         now = self.clock().astimezone(UTC)
         amz_date = now.strftime("%Y%m%dT%H%M%SZ")
         date_stamp = now.strftime("%Y%m%d")
@@ -960,40 +928,30 @@ class SudfClient:
             api_key=self.credentials.api_key,
             secret=self.credentials.signing_key,
         )
-        response = self.client.post(
-            f"{self.base_url}/{operation}", content=body, headers=headers
-        )
+        response = self.client.post(f"{self.base_url}/{operation}", content=body, headers=headers)
         if response.is_redirect:
             raise SudfAuthenticationError("SUDF redirects are not allowed")
         try:
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise SudfAuthenticationError(
-                f"SUDF request failed: HTTP {response.status_code} "
-                f"{response.text[:500]}"
+                f"SUDF request failed: HTTP {response.status_code} {response.text[:500]}"
             ) from exc
         if len(response.content) > self.max_response_bytes:
-            raise SudfAuthenticationError(
-                "SUDF response exceeds the configured size limit"
-            )
+            raise SudfAuthenticationError("SUDF response exceeds the configured size limit")
         try:
             result = response.json()
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
             raise SudfAuthenticationError("SUDF returned invalid JSON") from exc
         if not isinstance(result, dict):
-            raise SudfAuthenticationError(
-                "SUDF returned an unexpected response shape"
-            )
+            raise SudfAuthenticationError("SUDF returned an unexpected response shape")
         # Handle None or missing response body
         if result is None:
             raise SudfAuthenticationError("SUDF returned null response")
         faults = result.get("FaultItemList")
         if faults:
             fault_details = "; ".join(
-                f"{f.get('ReturnCode', '?')}({f.get('FieldName', '?')})"
-                for f in faults
+                f"{f.get('ReturnCode', '?')}({f.get('FieldName', '?')})" for f in faults
             )
-            raise SudfAuthenticationError(
-                f"SUDF returned a fault response: {fault_details}"
-            )
+            raise SudfAuthenticationError(f"SUDF returned a fault response: {fault_details}")
         return result

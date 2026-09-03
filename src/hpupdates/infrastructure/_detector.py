@@ -45,7 +45,6 @@ Source references:
   SharedCommon.cs (decompiled_sudf/HP.SUDFClient.Common/SharedCommon.cs)
 """
 
-
 from __future__ import annotations
 
 import re
@@ -56,9 +55,10 @@ from pathlib import Path
 
 class InstallStatus(IntEnum):
     """Mirrors HP.SUDFClient.Model.InstallStatus enum."""
+
     Invalid = -1
-    UnInstalled = 0      # update is needed (not installed or outdated)
-    Installed = 1        # update is already applied
+    UnInstalled = 0  # update is needed (not installed or outdated)
+    Installed = 1  # update is already applied
     InvalidStorePackage = 2
     InstalledByHPSA = 3
     UninstalledStorePackage = 4
@@ -67,6 +67,7 @@ class InstallStatus(IntEnum):
 @dataclass(frozen=True, slots=True)
 class SUDFUpdate:
     """Mirrors HP.SUDFClient.Model.SUDFUpdate — the update metadata from the server."""
+
     guid: str = ""
     code: str = ""
     title: str = ""
@@ -110,9 +111,11 @@ class SUDFUpdate:
 # Version comparison — mirrors System.Version.CompareTo()
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True, slots=True)
 class DotNetVersion:
     """Mirrors System.Version: major.minor.build.revision comparison."""
+
     major: int = 0
     minor: int = 0
     build: int = -1
@@ -123,14 +126,16 @@ class DotNetVersion:
         """Parse a version string, matching System.Version constructor.
 
         Accepts "1", "1.2", "1.2.3", or "1.2.3.4".
-        Missing components default to -1 (matching .NET).
+        Missing components default to -1 (matching .NET) except minor
+        which defaults to 0 when only major is given (matching
+        System.Version(int, int) behavior).
         """
         if not s:
             raise ValueError("empty version string")
         parts = s.strip().split(".")
         try:
             major = int(parts[0])
-            minor = int(parts[1]) if len(parts) > 1 else -1
+            minor = int(parts[1]) if len(parts) > 1 else 0
             build = int(parts[2]) if len(parts) > 2 else -1
             revision = int(parts[3]) if len(parts) > 3 else -1
         except (ValueError, IndexError) as exc:
@@ -239,6 +244,7 @@ def resolve_path(path_template: str) -> str:
 # UpdateDetector — mirrors HP.SUDFClient.Detector.UpdateDetector
 # ---------------------------------------------------------------------------
 
+
 class UpdateDetector:
     """Detects whether SUDF updates are needed on the local machine.
 
@@ -285,9 +291,17 @@ class UpdateDetector:
                 return InstallStatus.UnInstalled
             store_status = self._verify_store_packages(update)
             if detail_status == InstallStatus.Invalid:
-                return InstallStatus.Invalid if store_status == InstallStatus.InvalidStorePackage else InstallStatus.UninstalledStorePackage
+                return (
+                    InstallStatus.Invalid
+                    if store_status == InstallStatus.InvalidStorePackage
+                    else InstallStatus.UninstalledStorePackage
+                )
             # detail_status == Installed
-            return InstallStatus.Installed if store_status == InstallStatus.UninstalledStorePackage else InstallStatus.UninstalledStorePackage
+            return (
+                InstallStatus.Installed
+                if store_status == InstallStatus.UninstalledStorePackage
+                else InstallStatus.UninstalledStorePackage
+            )
         else:
             return self._verify_store_packages(update)
 
@@ -392,7 +406,7 @@ class UpdateDetector:
             if "driverstore" in path_lower and "filerepository" in path_lower:
                 # Find the FileRepository base directory
                 idx = path_lower.index("filerepository")
-                base_dir = path[:idx + len("filerepository")]
+                base_dir = path[: idx + len("filerepository")]
                 filename = Path(path).name
                 # Search recursively for the file
                 base = Path(base_dir)
@@ -438,6 +452,7 @@ class UpdateDetector:
         try:
             import shutil
             import subprocess
+
             if shutil.which("powershell.exe"):
                 script = (
                     f"(Get-Item '{path}' -ErrorAction SilentlyContinue)."
@@ -446,10 +461,13 @@ class UpdateDetector:
                 )
                 result = subprocess.run(
                     ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-                    capture_output=True, text=True, timeout=10
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
                 if result.stdout.strip():
                     import json
+
                     data = json.loads(result.stdout)
                     major = data.get("FileMajorPart", 0)
                     minor = data.get("FileMinorPart", 0)
@@ -460,9 +478,7 @@ class UpdateDetector:
             pass
         return None
 
-    def _check_bios_file(
-        self, detail_list: list[str], ignore_sys_id: bool
-    ) -> InstallStatus:
+    def _check_bios_file(self, detail_list: list[str], ignore_sys_id: bool) -> InstallStatus:
         """Mirrors UpdateDetector.CheckBIOSFile().
 
         1. If not ignoreSysId: verify BIOS ROM family matches SysId or BIOSROMFamily
@@ -476,15 +492,18 @@ class UpdateDetector:
             bios_id = detail_list[1].strip()
             sys_id = self._sys_id
             rom_family = self._bios_rom_family
-            if (not bios_id.startswith(sys_id)
-                    and not bios_id.startswith(rom_family)
-                    and not bios_id.startswith("0" + sys_id)
-                    and not bios_id.startswith("0" + rom_family)):
+            if (
+                not bios_id.startswith(sys_id)
+                and not bios_id.startswith(rom_family)
+                and not bios_id.startswith("0" + sys_id)
+                and not bios_id.startswith("0" + rom_family)
+            ):
                 return InstallStatus.Invalid
 
         # Parse server release date from last field
         # Format: "yyyy.mm.dd" split by "."
         from datetime import date as _date
+
         date_str = detail_list[-1].strip()
         server_date = None
         date_parts = date_str.split(".")
@@ -501,7 +520,9 @@ class UpdateDetector:
             try:
                 local_parts = self._bios_release_date.split("/")
                 if len(local_parts) == 3:
-                    local_date = _date(int(local_parts[2]), int(local_parts[0]), int(local_parts[1]))
+                    local_date = _date(
+                        int(local_parts[2]), int(local_parts[0]), int(local_parts[1])
+                    )
                 else:
                     # Try yyyymmdd format from WMI
                     d = self._bios_release_date
@@ -560,14 +581,14 @@ class UpdateDetector:
         try:
             import shutil
             import subprocess
+
             if shutil.which("powershell.exe"):
-                script = (
-                    "Get-AppxPackage | ForEach-Object { "
-                    "'{0}|{1}' -f $_.Name, $_.Version }"
-                )
+                script = "Get-AppxPackage | ForEach-Object { '{0}|{1}' -f $_.Name, $_.Version }"
                 result = subprocess.run(
                     ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-                    capture_output=True, text=True, timeout=30
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 for line in result.stdout.strip().splitlines():
                     if "|" in line:

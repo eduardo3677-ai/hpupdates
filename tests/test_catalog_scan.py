@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from hpupdates.core.services import DriverService
-from hpupdates.models.models import Device, DriverPackage
 from hpupdates.infrastructure.catalog.validator import JsonCatalog
+from hpupdates.models.models import Device, DriverPackage
 
 
 def test_scan_matches_hardware_ids_and_prefers_newest(tmp_path: Path) -> None:

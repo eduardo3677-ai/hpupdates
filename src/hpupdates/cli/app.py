@@ -21,7 +21,10 @@ from hpupdates.cli.web_cmds import app as _web
 
 app = typer.Typer(
     name="hpupdates",
-    help="Open-source HP driver/software update CLI — reverse-engineered from HP Support Assistant.",
+    help=(
+        "Open-source HP driver/software update CLI — "
+        "reverse-engineered from HP Support Assistant."
+    ),
     no_args_is_help=True,
 )
 
@@ -29,9 +32,14 @@ console = Console()
 
 # Only register the 8 essential commands by name.
 _KEEP = {
-    "info", "scan", "update", "download-all",
-    "softpaq-download", "softpaq-install",
-    "bios-check", "warranty",
+    "info",
+    "scan",
+    "update",
+    "download-all",
+    "softpaq-download",
+    "softpaq-install",
+    "bios-check",
+    "warranty",
 }
 
 

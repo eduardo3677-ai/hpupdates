@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-
 import json
 import re
 from pathlib import Path
 
-from hpupdates.models.models import DeviceRule, DriverPackage, SoftwareRule
 from hpupdates.infrastructure.endpoints import EndpointPolicyError, require_softpaq_url
+from hpupdates.models.models import DeviceRule, DriverPackage, SoftwareRule
 
 
 class CatalogError(ValueError):

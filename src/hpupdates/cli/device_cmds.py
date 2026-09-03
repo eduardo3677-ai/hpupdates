@@ -10,11 +10,14 @@ import typer
 from platformdirs import user_cache_path
 from rich.console import Console
 from rich.table import Table
-from hpupdates.cli._helpers import _build_windows_backend
 
-from hpupdates.models.models import Device
-from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError, HpImageAssistantCatalogProvider
+from hpupdates.cli._helpers import _build_windows_backend
+from hpupdates.infrastructure.catalog.hp_catalog import (
+    HpCatalogError,
+    HpImageAssistantCatalogProvider,
+)
 from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
+from hpupdates.models.models import Device
 
 app = typer.Typer(help="Open-source, auditable Windows HP driver maintenance CLI.")
 console = Console()
@@ -40,7 +43,6 @@ def _fresh_catalog(backend: WindowsDriverBackend) -> Path:
 
 def _inventory(backend: WindowsDriverBackend, inventory_file: Path | None) -> list[Device]:
     return _load_inventory(inventory_file) if inventory_file else backend.inventory()
-
 
 
 @app.command("os-code")
@@ -157,9 +159,7 @@ def pnp_devices(
 
 @app.command("health-check")
 def health_check(
-    device_id: Annotated[
-        str, typer.Option("--device-id", help="Device identifier.")
-    ] = "",
+    device_id: Annotated[str, typer.Option("--device-id", help="Device identifier.")] = "",
     json_output: Annotated[
         bool, typer.Option("--json", help="Emit machine-readable JSON.")
     ] = False,
@@ -188,5 +188,3 @@ def health_check(
 # ---------------------------------------------------------------------------
 # Warranty command
 # ---------------------------------------------------------------------------
-
-

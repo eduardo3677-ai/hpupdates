@@ -7,7 +7,6 @@ The helper functions below remain for infrastructure use.
 
 from __future__ import annotations
 
-
 from rich.console import Console
 
 from hpupdates.infrastructure.os_params import os_version_name
@@ -24,8 +23,10 @@ def _os_friendly_name(os_version: str, os_build: str) -> str:
     parts = os_version.split(".")
     major = int(parts[0]) if parts and parts[0].isdigit() else 0
     minor = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
-    build = int(os_build) if os_build.isdigit() else (
-        int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    build = (
+        int(os_build)
+        if os_build.isdigit()
+        else (int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0)
     )
     return os_version_name(major, minor, build)
 

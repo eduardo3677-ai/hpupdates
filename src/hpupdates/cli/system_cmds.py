@@ -12,10 +12,13 @@ from platformdirs import user_cache_path
 from rich.console import Console
 from rich.table import Table
 
-from hpupdates.models.models import Device
+from hpupdates.infrastructure.catalog.hp_catalog import (
+    HpCatalogError,
+    HpImageAssistantCatalogProvider,
+)
 from hpupdates.infrastructure.endpoints import endpoint_inventory
-from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError, HpImageAssistantCatalogProvider
 from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
+from hpupdates.models.models import Device
 
 app = typer.Typer(help="Open-source, auditable Windows HP driver maintenance CLI.")
 console = Console()
@@ -41,7 +44,6 @@ def _fresh_catalog(backend: WindowsDriverBackend) -> Path:
 
 def _inventory(backend: WindowsDriverBackend, inventory_file: Path | None) -> list[Device]:
     return _load_inventory(inventory_file) if inventory_file else backend.inventory()
-
 
 
 @app.command()
@@ -85,5 +87,3 @@ def endpoints_command(
             item.url,
         )
     console.print(table)
-
-

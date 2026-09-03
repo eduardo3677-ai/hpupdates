@@ -17,9 +17,8 @@ Source references:
   OSInformation.cs (decompiled_sudf/HP.SUDFClient.Common/OSInformation.cs)
   OSParams resource extracted from HP.SUDFClient.dll .resources blob
 """
+
 from __future__ import annotations
-
-
 
 import json
 from dataclasses import dataclass
@@ -64,8 +63,7 @@ def _load_osparams() -> OSParams:
     doc: dict[str, Any] = json.loads(raw)
     return OSParams(
         profixs=tuple(
-            OSProfix(name=item["Name"], value=item["Value"])
-            for item in doc.get("OSProfixs", [])
+            OSProfix(name=item["Name"], value=item["Value"]) for item in doc.get("OSProfixs", [])
         ),
         product_names=tuple(
             OSProductName(name=item["Name"], value=item["Value"])
@@ -78,43 +76,46 @@ def _load_osparams() -> OSParams:
     )
 
 
-_FALLBACK_OSPARAMS_JSON = json.dumps({
-    "OSProductNames": [
-        {"Name": "PR", "Value": "Professional"},
-        {"Name": "ML", "Value": "Multi-Language"},
-        {"Name": "EN", "Value": "Enterprise"},
-        {"Name": "EM", "Value": "Emerging Markets"},
-        {"Name": "EM", "Value": "Single Language (Emerging Markets)"},
-        {"Name": "CH", "Value": "Chinese Market"},
-        {"Name": "CH", "Value": "Country Specific (China)"},
-        {"Name": "UL", "Value": "Ultimate"},
-        {"Name": "HP", "Value": "Home Premium"},
-        {"Name": "HB", "Value": "Home Basic"},
-        {"Name": "SE", "Value": "Starter Edition"},
-    ],
-    "OSProfixs": [
-        {"Name": "W7", "Value": "Windows 7"},
-        {"Name": "W8", "Value": "Windows 8"},
-        {"Name": "W8.1", "Value": "Windows 8.1"},
-        {"Name": "WT", "Value": "Windows 10"},
-        {"Name": "W11", "Value": "Windows 11"},
-    ],
-    "OSRules": [
-        {"Name": "W7", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
-        {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
-        {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
-        {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture", "_", "OSVersion"]},
-        {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture"]},
-        {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture"]},
-        {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture"]},
-        {"Name": "W11", "Mapping": ["OSProfix", "_", "OSVersion"]},
-    ],
-})
+_FALLBACK_OSPARAMS_JSON = json.dumps(
+    {
+        "OSProductNames": [
+            {"Name": "PR", "Value": "Professional"},
+            {"Name": "ML", "Value": "Multi-Language"},
+            {"Name": "EN", "Value": "Enterprise"},
+            {"Name": "EM", "Value": "Emerging Markets"},
+            {"Name": "EM", "Value": "Single Language (Emerging Markets)"},
+            {"Name": "CH", "Value": "Chinese Market"},
+            {"Name": "CH", "Value": "Country Specific (China)"},
+            {"Name": "UL", "Value": "Ultimate"},
+            {"Name": "HP", "Value": "Home Premium"},
+            {"Name": "HB", "Value": "Home Basic"},
+            {"Name": "SE", "Value": "Starter Edition"},
+        ],
+        "OSProfixs": [
+            {"Name": "W7", "Value": "Windows 7"},
+            {"Name": "W8", "Value": "Windows 8"},
+            {"Name": "W8.1", "Value": "Windows 8.1"},
+            {"Name": "WT", "Value": "Windows 10"},
+            {"Name": "W11", "Value": "Windows 11"},
+        ],
+        "OSRules": [
+            {"Name": "W7", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+            {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+            {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture", "OSType"]},
+            {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture", "_", "OSVersion"]},
+            {"Name": "WT", "Mapping": ["OSProfix", "OSArchitecture"]},
+            {"Name": "W8", "Mapping": ["OSProfix", "OSArchitecture"]},
+            {"Name": "W8.1", "Mapping": ["OSProfix", "OSArchitecture"]},
+            {"Name": "W11", "Mapping": ["OSProfix", "_", "OSVersion"]},
+        ],
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # OSInformation — mirrors HP.SUDFClient.Common.OSInformation
 # ---------------------------------------------------------------------------
+
 
 def is_win11(major: int, minor: int, build: int) -> bool:
     """Mirrors OSInformation.IsWin11():
@@ -183,6 +184,7 @@ def report_os_version(
 # ---------------------------------------------------------------------------
 # OSParamsCreator — mirrors HP.SUDFClient.ScanParams.OSParamsCreator.Creat()
 # ---------------------------------------------------------------------------
+
 
 def _get_same_word_count(pattern: str, content: str) -> int:
     """Mirrors OSParamsCreator.GetTheSameWordCount().

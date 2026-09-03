@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import hashlib
 import json
 import shutil
@@ -12,14 +11,14 @@ from urllib.parse import urlparse
 
 import httpx
 
-from hpupdates.models.models import MachineProfile
-from hpupdates.infrastructure.endpoints import require_operational_endpoint
 from hpupdates.infrastructure.catalog.hp_catalog import (
     HpCatalogError,
     HpCatalogNotFoundError,
     HpImageAssistantCatalogProvider,
     HpPlatform,
 )
+from hpupdates.infrastructure.endpoints import require_operational_endpoint
+from hpupdates.models.models import MachineProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +41,6 @@ class CatalogBundleManifest:
 
 class HpCatalogBundleProvider:
     """Synchronize the distinct public catalog families used by HPIA."""
-
 
     PRODUCT_UPDATE_URL = (
         require_operational_endpoint("hpia_product_catalog").url + "ProductCatalogUpdate.xml"

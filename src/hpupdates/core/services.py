@@ -340,6 +340,7 @@ class SudfScanService:
         if os_codes_to_try and os_codes_to_try[0]:
             primary = os_codes_to_try[0]
             import re as _re
+
             ver_match = _re.search(r"([A-Z0-9]+_)(\d+H\d)", primary)
             if ver_match:
                 prefix = ver_match.group(1)
@@ -418,6 +419,7 @@ class SudfScanService:
         from hpupdates.infrastructure.update_detector import (
             SUDFUpdate as DetSUDFUpdate,
         )
+
         update = DetSUDFUpdate.from_dict(update_raw)
         status = detector.validate_sudf_update(update)  # type: ignore[attr-defined]
         return int(status), InstallStatus(status).name

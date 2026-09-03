@@ -5,14 +5,11 @@ from pathlib import Path
 
 import httpx
 import pytest
-from typer.testing import CliRunner
 
-from hpupdates.cli import app
-from hpupdates.models.models import MachineProfile
 from hpupdates.infrastructure.catalog.bundle import (
-    CatalogBundleManifest,
     HpCatalogBundleProvider,
 )
+from hpupdates.models.models import MachineProfile
 
 PLATFORM_XML = b"""<ImagePal>
 <Platform><ProductName>HP Test</ProductName><SystemFamily>X</SystemFamily>

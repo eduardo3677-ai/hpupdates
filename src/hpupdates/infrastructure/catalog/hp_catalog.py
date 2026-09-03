@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-
+import contextlib
 import json
 import shutil
 import subprocess
@@ -15,9 +15,9 @@ from urllib.parse import urlparse
 
 import httpx
 
-from hpupdates.models.models import MachineProfile
 from hpupdates.infrastructure.catalog.validator import JsonCatalog
 from hpupdates.infrastructure.endpoints import require_operational_endpoint
+from hpupdates.models.models import MachineProfile
 
 
 class HpCatalogError(RuntimeError):
@@ -44,7 +44,6 @@ class HpPlatform:
 
 class HpImageAssistantCatalogProvider:
     """Download current public HP Image Assistant reference catalogs."""
-
 
     BASE_URL = require_operational_endpoint("hpia_catalog").url
     PLATFORM_URL = BASE_URL + "platformList.cab"
@@ -336,33 +335,33 @@ class HpImageAssistantCatalogProvider:
 
             # Find the best available CAB-capable extractor.
             extractor = (
-                shutil.which("tar.exe")    # Windows 10+ ships bsdtar as tar.exe
+                shutil.which("tar.exe")  # Windows 10+ ships bsdtar as tar.exe
                 or shutil.which("bsdtar")  # Linux/Mac with libarchive
-                or shutil.which("7z")      # 7-Zip (Windows/Linux)
-                or shutil.which("tar")      # Fallback: GNU tar (may not handle CAB)
+                or shutil.which("7z")  # 7-Zip (Windows/Linux)
+                or shutil.which("tar")  # Fallback: GNU tar (may not handle CAB)
             )
             if extractor is None:
-                raise HpCatalogError(
-                    "No CAB extractor found. Install 'tar' (bsdtar) or '7z'."
-                )
+                raise HpCatalogError("No CAB extractor found. Install 'tar' (bsdtar) or '7z'.")
 
             # Convert path for Windows when running under WSL.
             cab_argument = str(cab)
             wslpath = shutil.which("wslpath")
             if wslpath is not None and not sys.platform.startswith("win"):
-                try:
+                with contextlib.suppress(
+                    subprocess.CalledProcessError, FileNotFoundError
+                ):
                     cab_argument = subprocess.run(
                         [wslpath, "-w", str(cab)],
-                        check=True, capture_output=True, text=True
+                        check=True, capture_output=True, text=True,
                     ).stdout.strip()
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    pass  # fall back to the Linux path
 
             try:
                 # List archive contents.
                 listing = subprocess.run(
                     [extractor, "-tf", cab_argument],
-                    check=True, capture_output=True, text=True,
+                    check=True,
+                    capture_output=True,
+                    text=True,
                 ).stdout.splitlines()
             except (FileNotFoundError, subprocess.CalledProcessError) as exc:
                 raise HpCatalogError("Could not inspect the HP catalog CAB") from exc
@@ -378,9 +377,7 @@ class HpImageAssistantCatalogProvider:
 
             xml_members = [name for name in members if name.lower().endswith(".xml")]
             if len(xml_members) != 1:
-                raise HpCatalogError(
-                    "HP catalog CAB must contain exactly one XML reference file"
-                )
+                raise HpCatalogError("HP catalog CAB must contain exactly one XML reference file")
 
             # Extract the XML to stdout.
             process = subprocess.Popen(
@@ -397,8 +394,7 @@ class HpImageAssistantCatalogProvider:
             _, stderr = process.communicate()
             if process.returncode != 0:
                 raise HpCatalogError(
-                    "Could not extract the HP catalog: "
-                    + stderr.decode(errors="replace").strip()
+                    "Could not extract the HP catalog: " + stderr.decode(errors="replace").strip()
                 )
             return content_xml
 

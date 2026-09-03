@@ -12,11 +12,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from hpupdates.infrastructure.sudf import SudfClient, SudfCredentials, SudfRequest
 from hpupdates.infrastructure.installer import SoftPaqUpdate, download_and_install
+from hpupdates.infrastructure.os_params import create_os_code, create_os_codes
+from hpupdates.infrastructure.sudf import SudfClient, SudfCredentials, SudfRequest
 from hpupdates.infrastructure.update_detector import UpdateDetector
 from hpupdates.infrastructure.web import HpsaWebClient
-from hpupdates.infrastructure.os_params import create_os_code, create_os_codes
 
 
 class HpupdatesClient:
@@ -49,6 +49,7 @@ class HpupdatesClient:
         if not os_code:
             from hpupdates.infrastructure.os_params import create_os_code
             from hpupdates.infrastructure.windows.backend import WindowsDriverBackend
+
             try:
                 backend = WindowsDriverBackend()
                 os_info = backend.get_os_info()

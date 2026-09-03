@@ -26,6 +26,7 @@ from hpupdates.infrastructure.sudf import (
 # Crypto tests
 # ---------------------------------------------------------------------------
 
+
 class TestAesDecryption:
     def test_decrypt_v4_api_key(self) -> None:
         """V4 API key should decrypt to a 40-char string with known SHA-256."""
@@ -61,6 +62,7 @@ class TestAesDecryption:
         encryptor = cipher.encryptor()
         encrypted = encryptor.update(padded) + encryptor.finalize()
         import base64
+
         encrypted_b64 = base64.b64encode(encrypted).decode()
         result = aes_decrypt_string(encrypted_b64, key_str, iv_str)
         assert result == plaintext.decode()
@@ -111,6 +113,7 @@ class TestSigV4Signing:
 # ---------------------------------------------------------------------------
 # Client tests
 # ---------------------------------------------------------------------------
+
 
 class TestSudfClient:
     def test_default_credentials_use_embedded_key(self) -> None:
@@ -164,6 +167,7 @@ class TestSudfClient:
 # ---------------------------------------------------------------------------
 # Request model tests
 # ---------------------------------------------------------------------------
+
 
 class TestSudfRequest:
     def test_payload_fields(self) -> None:
@@ -235,41 +239,30 @@ class TestMessagesRequest:
 # Mock API response tests
 # ---------------------------------------------------------------------------
 
+
 class TestApiCalls:
     """Test API calls with mocked HTTP responses."""
 
     def test_get_updates_by_sysid_success(self) -> None:
         """get_updates_by_sysid should parse a successful response."""
         mock_response_data = {
-            "Updates": [
-                {"Guid": "test-guid", "Code": "SP12345", "Title": "Test Update"}
-            ],
+            "Updates": [{"Guid": "test-guid", "Code": "SP12345", "Title": "Test Update"}],
         }
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, json=mock_response_data)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, json=mock_response_data))
         client = SudfClient(client=httpx.Client(transport=transport))
-        result = client.get_updates_by_sysid(
-            SudfRequest(use_case="HPSF", system_id="12345")
-        )
+        result = client.get_updates_by_sysid(SudfRequest(use_case="HPSF", system_id="12345"))
         assert "Updates" in result
         assert len(result["Updates"]) == 1
 
     def test_get_updates_by_sysid_fault(self) -> None:
         """get_updates_by_sysid should raise on FaultItemList."""
         mock_response_data = {
-            "FaultItemList": [
-                {"ReturnCode": "ERR001", "FieldName": "SysId"}
-            ],
+            "FaultItemList": [{"ReturnCode": "ERR001", "FieldName": "SysId"}],
         }
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, json=mock_response_data)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, json=mock_response_data))
         client = SudfClient(client=httpx.Client(transport=transport))
         with pytest.raises(SudfAuthenticationError, match="fault response"):
-            client.get_updates_by_sysid(
-                SudfRequest(use_case="HPSF", system_id="bad")
-            )
+            client.get_updates_by_sysid(SudfRequest(use_case="HPSF", system_id="bad"))
 
     def test_get_printer_updates_success(self) -> None:
         """get_printer_updates should parse a successful response."""
@@ -286,13 +279,9 @@ class TestApiCalls:
                 }
             ],
         }
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, json=mock_response_data)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, json=mock_response_data))
         client = SudfClient(client=httpx.Client(transport=transport))
-        result = client.get_printer_updates(
-            PrinterUpdatesRequest(product_number="L12345")
-        )
+        result = client.get_printer_updates(PrinterUpdatesRequest(product_number="L12345"))
         assert "PrinterUpdates" in result
         assert result["PrinterUpdates"][0]["HttpURL"] == "https://example.com/driver.exe"
 
@@ -300,13 +289,9 @@ class TestApiCalls:
         """get_messages should parse a successful response."""
         mock_response_data = {
             "Sequence": 1,
-            "Messages": [
-                {"Guid": "msg-1", "Title": "Test Message", "Severity": 2}
-            ],
+            "Messages": [{"Guid": "msg-1", "Title": "Test Message", "Severity": 2}],
         }
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, json=mock_response_data)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, json=mock_response_data))
         client = SudfClient(client=httpx.Client(transport=transport))
         result = client.get_messages(MessagesRequest())
         assert "Messages" in result
@@ -319,14 +304,13 @@ class TestApiCalls:
         )
         client = SudfClient(client=httpx.Client(transport=transport))
         with pytest.raises(SudfAuthenticationError, match="HTTP 500"):
-            client.get_updates_by_sysid(
-                SudfRequest(use_case="HPSF", system_id="12345")
-            )
+            client.get_updates_by_sysid(SudfRequest(use_case="HPSF", system_id="12345"))
 
 
 # ---------------------------------------------------------------------------
 # Operation validation tests
 # ---------------------------------------------------------------------------
+
 
 class TestOperationValidation:
     def test_unknown_operation_rejected(self) -> None:
@@ -340,6 +324,7 @@ class TestOperationValidation:
 # Driver download tests
 # ---------------------------------------------------------------------------
 
+
 class TestDriverDownload:
     def test_download_driver_no_url_raises(self, tmp_path) -> None:
         """download_driver should raise if no URL in update entry."""
@@ -350,9 +335,7 @@ class TestDriverDownload:
     def test_download_driver_http(self, tmp_path) -> None:
         """download_driver should download from HttpURL."""
         mock_data = b"fake driver binary content"
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, content=mock_data)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, content=mock_data))
         client = SudfClient(client=httpx.Client(transport=transport))
         update = {
             "HttpURL": "https://example.com/SP12345.exe",
@@ -378,9 +361,7 @@ class TestDriverDownload:
         assert SudfClient._force_https("https://ftp.hp.com/file.exe") == (
             "https://ftp.hp.com/file.exe"
         )
-        assert SudfClient._force_https("ftp://ftp.hp.com/file.exe") == (
-            "ftp://ftp.hp.com/file.exe"
-        )
+        assert SudfClient._force_https("ftp://ftp.hp.com/file.exe") == ("ftp://ftp.hp.com/file.exe")
 
     def test_download_driver_forces_https(self, tmp_path) -> None:
         """download_driver should force HTTPS on HTTP URLs."""
@@ -406,9 +387,7 @@ class TestDriverDownload:
         local_file.write_bytes(content)
         expected_md5 = hashlib.md5(content).hexdigest()
 
-        transport = httpx.MockTransport(
-            lambda req: httpx.Response(200, text=expected_md5)
-        )
+        transport = httpx.MockTransport(lambda req: httpx.Response(200, text=expected_md5))
         client = SudfClient(client=httpx.Client(transport=transport))
         assert client.verify_softpaq_checksum("sp12345", local_file) is True
 
@@ -434,9 +413,7 @@ class TestDriverDownload:
                 return httpx.Response(200, content=sig_data)
             # Checksum service returns the correct MD5
             if "checksum" in url:
-                return httpx.Response(
-                    200, text=hashlib.md5(driver_data).hexdigest()
-                )
+                return httpx.Response(200, text=hashlib.md5(driver_data).hexdigest())
             return httpx.Response(200, content=driver_data)
 
         transport = httpx.MockTransport(handler)
@@ -445,9 +422,7 @@ class TestDriverDownload:
             "HttpURL": "https://ftp.hp.com/pub/softpaq/sp71001-71500/sp71234.exe",
             "SoftPaqId": "sp71234",
         }
-        driver_path, sig_path = client.download_driver_with_signature(
-            update, tmp_path
-        )
+        driver_path, sig_path = client.download_driver_with_signature(update, tmp_path)
         assert driver_path.exists()
         assert driver_path.read_bytes() == driver_data
         assert sig_path is not None
@@ -458,6 +433,7 @@ class TestDriverDownload:
 # ---------------------------------------------------------------------------
 # Additional cryptographic operations tests
 # ---------------------------------------------------------------------------
+
 
 class TestAdditionalCrypto:
     def test_create_sha256_cache_id_is_uppercase_hex(self) -> None:

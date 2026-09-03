@@ -77,6 +77,7 @@ SIGNATURE VERIFICATION:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import re
@@ -92,6 +93,7 @@ from enum import IntEnum
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class IssueResult(IntEnum):
     NewDetected = 0
@@ -133,9 +135,11 @@ class DownloadStatus(IntEnum):
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SoftPaqUpdate:
     """Mirrors HP.UpdateClient.Models.Update — the installable package."""
+
     guid: str = ""
     software_id: str = ""
     sp_name: str = ""
@@ -189,6 +193,7 @@ def is_valid_url(url: str) -> bool:
     """Mirrors WebUtil.IsValidURL: host must end in .hp.com/.hpicorp.net/.hpicloud.net, no query."""
     try:
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         host = parsed.hostname or ""
         host = host.lower()
@@ -206,6 +211,7 @@ def force_https(url: str) -> str:
 # Download URL construction — mirrors WebUtil.GetDownloadURL
 # ---------------------------------------------------------------------------
 
+
 def get_download_url(update: SoftPaqUpdate, is_manual: bool, locale: str = "en") -> str:
     """Mirrors WebUtil.GetDownloadURL.
 
@@ -219,6 +225,7 @@ def get_download_url(update: SoftPaqUpdate, is_manual: bool, locale: str = "en")
     if update.action_type == "PrinterDriver" and update.cdn:
         # Replace host with CDN
         from urllib.parse import urlparse
+
         parsed = urlparse(url)
         old_scheme_host = f"{parsed.scheme}://{parsed.hostname}"
         if old_scheme_host and update.cdn:
@@ -230,6 +237,7 @@ def get_download_url(update: SoftPaqUpdate, is_manual: bool, locale: str = "en")
 # ---------------------------------------------------------------------------
 # MD5 validation — mirrors DownloadUtil.ValidateMD5
 # ---------------------------------------------------------------------------
+
 
 def validate_md5(file_path: str, expected_checksum: str) -> bool:
     """Mirrors DownloadUtil.ValidateMD5.
@@ -244,11 +252,9 @@ def validate_md5(file_path: str, expected_checksum: str) -> bool:
         for chunk in iter(lambda: f.read(8192), b""):
             md5.update(chunk)
     actual = md5.hexdigest()
-    if not actual.lower() == expected_checksum.lower():
-        try:
+    if actual.lower() != expected_checksum.lower():
+        with contextlib.suppress(OSError):
             os.remove(file_path)
-        except OSError:
-            pass
         return False
     return True
 
@@ -260,20 +266,19 @@ def check_downloaded_file_version(local_path: str) -> bool:
     Returns True if file is valid, False if it should be deleted.
     """
     filename = os.path.basename(local_path)
-    if re.match(r"^sp\d+\.exe$", filename, re.IGNORECASE):
+    if re.match(r"^sp\d+\.exe$", filename, re.IGNORECASE) and os.name == "nt":
         # On Windows, this checks FileVersionInfo.FileMajorPart != 0
-        # On non-Windows, we can't check, so we pass it
-        if os.name == "nt":
-            try:
-                import win32api
-                info = win32api.GetFileVersionInfo(local_path, "\\")
-                ms = info.get("FileVersionMS", 0)
-                file_major_part = (ms >> 16) & 0xFFFF
-                if file_major_part != 0:
-                    os.remove(local_path)
-                    return False
-            except Exception:
-                pass
+        try:
+            import win32api
+
+            info = win32api.GetFileVersionInfo(local_path, "\\")
+            ms = info.get("FileVersionMS", 0)
+            file_major_part = (ms >> 16) & 0xFFFF
+            if file_major_part != 0:
+                os.remove(local_path)
+                return False
+        except Exception:
+            pass
     return True
 
 
@@ -283,36 +288,286 @@ def check_downloaded_file_version(local_path: str) -> bool:
 
 # HP CASL RSA public key (276 bytes) extracted from HPSignCheck.cs
 # This is the embedded key used to verify .hpsign files
-_HPSIGN_PUBLIC_KEY = bytes([
-    6, 2, 0, 0, 0, 36, 0, 0, 82, 83,
-    65, 49, 0, 8, 0, 0, 1, 0, 1, 0,
-    229, 231, 255, 36, 127, 134, 44, 107, 186, 194,
-    232, 186, 158, 70, 175, 206, 240, 175, 208, 85,
-    70, 177, 51, 214, 214, 233, 169, 91, 179, 202,
-    31, 146, 114, 254, 166, 233, 54, 133, 119, 244,
-    29, 112, 223, 210, 237, 125, 220, 42, 148, 155,
-    254, 204, 182, 153, 169, 220, 37, 207, 27, 209,
-    114, 178, 28, 166, 217, 223, 161, 70, 194, 146,
-    240, 210, 18, 148, 60, 89, 251, 47, 187, 115,
-    150, 193, 221, 38, 142, 154, 83, 39, 65, 196,
-    255, 97, 253, 12, 65, 77, 59, 99, 1, 48,
-    174, 129, 171, 121, 190, 162, 113, 241, 197, 241,
-    176, 107, 41, 215, 35, 33, 150, 201, 120, 178,
-    54, 204, 216, 229, 83, 51, 158, 86, 225, 101,
-    164, 51, 138, 237, 73, 134, 98, 25, 135, 143,
-    97, 232, 229, 223, 132, 29, 150, 229, 255, 58,
-    13, 135, 14, 63, 12, 28, 104, 94, 120, 122,
-    254, 160, 187, 154, 172, 91, 173, 242, 208, 157,
-    70, 231, 61, 141, 235, 55, 127, 62, 55, 5,
-    89, 251, 108, 103, 225, 157, 151, 98, 249, 239,
-    86, 122, 37, 0, 32, 89, 29, 184, 150, 221,
-    232, 161, 231, 138, 179, 24, 102, 213, 223, 3,
-    127, 150, 249, 33, 31, 76, 230, 7, 82, 11,
-    167, 13, 6, 77, 73, 233, 126, 245, 20, 179,
-    149, 200, 2, 213, 92, 168, 111, 233, 0, 8,
-    102, 215, 128, 7, 230, 232, 19, 159, 141, 178,
-    82, 118, 214, 111, 30, 183,
-])
+_HPSIGN_PUBLIC_KEY = bytes(
+    [
+        6,
+        2,
+        0,
+        0,
+        0,
+        36,
+        0,
+        0,
+        82,
+        83,
+        65,
+        49,
+        0,
+        8,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        229,
+        231,
+        255,
+        36,
+        127,
+        134,
+        44,
+        107,
+        186,
+        194,
+        232,
+        186,
+        158,
+        70,
+        175,
+        206,
+        240,
+        175,
+        208,
+        85,
+        70,
+        177,
+        51,
+        214,
+        214,
+        233,
+        169,
+        91,
+        179,
+        202,
+        31,
+        146,
+        114,
+        254,
+        166,
+        233,
+        54,
+        133,
+        119,
+        244,
+        29,
+        112,
+        223,
+        210,
+        237,
+        125,
+        220,
+        42,
+        148,
+        155,
+        254,
+        204,
+        182,
+        153,
+        169,
+        220,
+        37,
+        207,
+        27,
+        209,
+        114,
+        178,
+        28,
+        166,
+        217,
+        223,
+        161,
+        70,
+        194,
+        146,
+        240,
+        210,
+        18,
+        148,
+        60,
+        89,
+        251,
+        47,
+        187,
+        115,
+        150,
+        193,
+        221,
+        38,
+        142,
+        154,
+        83,
+        39,
+        65,
+        196,
+        255,
+        97,
+        253,
+        12,
+        65,
+        77,
+        59,
+        99,
+        1,
+        48,
+        174,
+        129,
+        171,
+        121,
+        190,
+        162,
+        113,
+        241,
+        197,
+        241,
+        176,
+        107,
+        41,
+        215,
+        35,
+        33,
+        150,
+        201,
+        120,
+        178,
+        54,
+        204,
+        216,
+        229,
+        83,
+        51,
+        158,
+        86,
+        225,
+        101,
+        164,
+        51,
+        138,
+        237,
+        73,
+        134,
+        98,
+        25,
+        135,
+        143,
+        97,
+        232,
+        229,
+        223,
+        132,
+        29,
+        150,
+        229,
+        255,
+        58,
+        13,
+        135,
+        14,
+        63,
+        12,
+        28,
+        104,
+        94,
+        120,
+        122,
+        254,
+        160,
+        187,
+        154,
+        172,
+        91,
+        173,
+        242,
+        208,
+        157,
+        70,
+        231,
+        61,
+        141,
+        235,
+        55,
+        127,
+        62,
+        55,
+        5,
+        89,
+        251,
+        108,
+        103,
+        225,
+        157,
+        151,
+        98,
+        249,
+        239,
+        86,
+        122,
+        37,
+        0,
+        32,
+        89,
+        29,
+        184,
+        150,
+        221,
+        232,
+        161,
+        231,
+        138,
+        179,
+        24,
+        102,
+        213,
+        223,
+        3,
+        127,
+        150,
+        249,
+        33,
+        31,
+        76,
+        230,
+        7,
+        82,
+        11,
+        167,
+        13,
+        6,
+        77,
+        73,
+        233,
+        126,
+        245,
+        20,
+        179,
+        149,
+        200,
+        2,
+        213,
+        92,
+        168,
+        111,
+        233,
+        0,
+        8,
+        102,
+        215,
+        128,
+        7,
+        230,
+        232,
+        19,
+        159,
+        141,
+        178,
+        82,
+        118,
+        214,
+        111,
+        30,
+        183,
+    ]
+)
 
 
 def verify_hpsign(file_path: str, sign_path: str | None = None, use_sha256: bool = False) -> bool:
@@ -371,7 +626,7 @@ def _verify_casl_signature_csp(file_data: bytes, sig_data: bytes, hash_algo) -> 
         bitlen = int.from_bytes(blob[12:16], "little")
         pubexp = int.from_bytes(blob[16:20], "little")
         modulus_len = bitlen // 8
-        modulus = int.from_bytes(blob[20:20 + modulus_len], "little")
+        modulus = int.from_bytes(blob[20 : 20 + modulus_len], "little")
 
         pub_numbers = rsa.RSAPublicNumbers(e=pubexp, n=modulus)
         pub_key = pub_numbers.public_key(default_backend())
@@ -382,9 +637,7 @@ def _verify_casl_signature_csp(file_data: bytes, sig_data: bytes, hash_algo) -> 
             hash_alg = hashes.SHA1()
 
         try:
-            pub_key.verify(
-                sig_data, file_data, padding.PKCS1v15(), hash_alg
-            )
+            pub_key.verify(sig_data, file_data, padding.PKCS1v15(), hash_alg)
             return True
         except Exception:
             return False
@@ -403,6 +656,7 @@ def verify_authenticode(file_path: str) -> bool:
         return True  # Skip verification (log warning)
     try:
         import ctypes
+
         # WinVerifyTrust call
         ctypes.WinDLL("wintrust")
         # This is a simplified version — the real implementation
@@ -416,6 +670,7 @@ def verify_authenticode(file_path: str) -> bool:
 # System Restore — mirrors InstallHelper.SystemRestoreEnabled + CreateRestorePoint
 # ---------------------------------------------------------------------------
 
+
 def is_system_restore_enabled(runner: Callable | None = None) -> bool:
     """Mirrors InstallHelper.SystemRestoreEnabled.
 
@@ -427,6 +682,7 @@ def is_system_restore_enabled(runner: Callable | None = None) -> bool:
         return False
     try:
         import winreg
+
         key = winreg.OpenKey(
             winreg.HKEY_LOCAL_MACHINE,
             r"Software\Microsoft\Windows NT\CurrentVersion\SystemRestore",
@@ -451,7 +707,8 @@ def create_restore_point(description: str) -> bool:
     try:
         script = (
             "$ErrorActionPreference='Stop';"
-            f"$sr = New-Object System.Management.ManagementClass('\\\\localhost\\root\\default','SystemRestore',$null);"
+            "$sr = New-Object System.Management.ManagementClass("
+            "'\\\\localhost\\root\\default','SystemRestore',$null);"
             f"$params = $sr.GetMethodParameters('CreateRestorePoint');"
             f"$params['Description'] = '{description}';"
             "$params['RestorePointType'] = 0;"
@@ -460,7 +717,8 @@ def create_restore_point(description: str) -> bool:
         )
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-            capture_output=True, timeout=30,
+            capture_output=True,
+            timeout=30,
         )
         return result.returncode == 0
     except Exception:
@@ -470,6 +728,7 @@ def create_restore_point(description: str) -> bool:
 # ---------------------------------------------------------------------------
 # MSI Mutex — mirrors MsiUtils.PreCheckMSIMutex / PostCheckMSIMutex
 # ---------------------------------------------------------------------------
+
 
 def is_msi_running() -> bool:
     """Mirrors MsiUtils.IsMsiRunning.
@@ -481,9 +740,8 @@ def is_msi_running() -> bool:
         return False
     try:
         import win32event
-        win32event.OpenMutex(
-            win32event.SYNCHRONIZE, False, "Global\\_MSIExecute"
-        )
+
+        win32event.OpenMutex(win32event.SYNCHRONIZE, False, "Global\\_MSIExecute")
         return True
     except Exception:
         return False
@@ -507,6 +765,7 @@ def wait_for_msi_mutex(timeout_minutes: int = 1) -> bool:
 # Exit code mapping — mirrors InstallHelper.SetMappingInstallationResult
 # ---------------------------------------------------------------------------
 
+
 def map_installation_result(update: SoftPaqUpdate) -> None:
     """Mirrors InstallHelper.SetMappingInstallationResult.
 
@@ -525,10 +784,24 @@ def map_installation_result(update: SoftPaqUpdate) -> None:
         update.result = IssueResult.FailUnknownReturnCode
         return
 
-    success_codes = update.no_reboot_success_return_code.split(";") if update.no_reboot_success_return_code else []
-    fail_codes = update.no_reboot_failure_return_code.split(";") if update.no_reboot_failure_return_code else []
-    cancel_codes = update.no_reboot_cancel_return_code.split(";") if update.no_reboot_cancel_return_code else []
-    reboot_codes = update.reboot_success_return_code.split(";") if update.reboot_success_return_code else []
+    success_codes = (
+        update.no_reboot_success_return_code.split(";")
+        if update.no_reboot_success_return_code
+        else []
+    )
+    fail_codes = (
+        update.no_reboot_failure_return_code.split(";")
+        if update.no_reboot_failure_return_code
+        else []
+    )
+    cancel_codes = (
+        update.no_reboot_cancel_return_code.split(";")
+        if update.no_reboot_cancel_return_code
+        else []
+    )
+    reboot_codes = (
+        update.reboot_success_return_code.split(";") if update.reboot_success_return_code else []
+    )
 
     if code in success_codes:
         update.result = IssueResult.SuccessNoReboot
@@ -554,6 +827,7 @@ def map_installation_result(update: SoftPaqUpdate) -> None:
 # Command parsing — mirrors InstallHelper.ParseCommand
 # ---------------------------------------------------------------------------
 
+
 def parse_command(update: SoftPaqUpdate, path: str, command: str) -> str:
     """Mirrors InstallHelper.ParseCommand.
 
@@ -574,6 +848,7 @@ def parse_command(update: SoftPaqUpdate, path: str, command: str) -> str:
 # ---------------------------------------------------------------------------
 # SoftPaq extraction — mirrors InstallHelper.ExtractSoftPaq
 # ---------------------------------------------------------------------------
+
 
 def extract_softpaq(
     file_name: str,
@@ -612,7 +887,8 @@ def extract_softpaq(
         try:
             result = subprocess.run(
                 [exe, "x", src_path, f"-o{decompress_folder}", "-r", "-y"],
-                capture_output=True, timeout=900,  # 15 min timeout (matches C#)
+                capture_output=True,
+                timeout=900,  # 15 min timeout (matches C#)
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -622,6 +898,7 @@ def extract_softpaq(
         # Mirror: ZipFile.ExtractToDirectory
         try:
             import zipfile
+
             with zipfile.ZipFile(src_path, "r") as zf:
                 zf.extractall(decompress_folder)
             return True
@@ -634,7 +911,8 @@ def extract_softpaq(
         try:
             result = subprocess.run(
                 [exe, "/E", "/L", decompress_folder, src_path],
-                capture_output=True, timeout=900,
+                capture_output=True,
+                timeout=900,
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -646,6 +924,7 @@ def extract_softpaq(
 # ---------------------------------------------------------------------------
 # Disk space check — mirrors WebUtil.HasMoreDiskSpace
 # ---------------------------------------------------------------------------
+
 
 def has_enough_disk_space(size_bytes: float, drive: str = "C:\\") -> bool:
     """Mirrors WebUtil.HasMoreDiskSpace.
@@ -664,6 +943,7 @@ def has_enough_disk_space(size_bytes: float, drive: str = "C:\\") -> bool:
 # File size from server — mirrors WebDownloader.GetFileSizeFromServer
 # ---------------------------------------------------------------------------
 
+
 def get_file_size_from_server(url: str, timeout: int = 10, retries: int = 3) -> int:
     """Mirrors WebDownloader.GetFileSizeFromServer.
 
@@ -671,6 +951,7 @@ def get_file_size_from_server(url: str, timeout: int = 10, retries: int = 3) -> 
     """
     try:
         import urllib.request
+
         for _i in range(retries):
             try:
                 req = urllib.request.Request(url, method="HEAD")
@@ -686,6 +967,7 @@ def get_file_size_from_server(url: str, timeout: int = 10, retries: int = 3) -> 
 # ---------------------------------------------------------------------------
 # SoftPaq downloader — mirrors WebDownloader.DownloadFileSync
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DownloadResult:
@@ -724,9 +1006,13 @@ def download_softpaq(
             # Validate signature
             if casl_sign:
                 if verify_hpsign(local_path):
-                    return DownloadResult(DownloadStatus.AlreadyDownloaded, local_path, bytes_transferred=local_size)
+                    return DownloadResult(
+                        DownloadStatus.AlreadyDownloaded, local_path, bytes_transferred=local_size
+                    )
             else:
-                return DownloadResult(DownloadStatus.AlreadyDownloaded, local_path, bytes_transferred=local_size)
+                return DownloadResult(
+                    DownloadStatus.AlreadyDownloaded, local_path, bytes_transferred=local_size
+                )
 
     # Step 2: Check disk space
     server_size = expected_size or get_file_size_from_server(url)
@@ -739,6 +1025,7 @@ def download_softpaq(
         sign_path = local_path + ".hpsign"
         try:
             import urllib.request
+
             proxy_handler = urllib.request.ProxyHandler({"https": proxy} if proxy else {})
             opener = urllib.request.build_opener(proxy_handler)
             urllib.request.install_opener(opener)
@@ -774,25 +1061,23 @@ def download_softpaq(
             os.remove(local_path)
             return DownloadResult(DownloadStatus.Failed, error_code="size_mismatch")
 
-        if casl_sign:
-            if not verify_hpsign(local_path):
-                os.remove(local_path)
-                return DownloadResult(DownloadStatus.FailSignature)
+        if casl_sign and not verify_hpsign(local_path):
+            os.remove(local_path)
+            return DownloadResult(DownloadStatus.FailSignature)
 
         return DownloadResult(DownloadStatus.Downloaded, local_path, bytes_transferred=local_size)
 
     except Exception as e:
         if os.path.exists(local_path):
-            try:
+            with contextlib.suppress(OSError):
                 os.remove(local_path)
-            except OSError:
-                pass
         return DownloadResult(DownloadStatus.Failed, error_code=str(e))
 
 
 # ---------------------------------------------------------------------------
 # Install helpers — mirror InstallHelper methods
 # ---------------------------------------------------------------------------
+
 
 def run_silent_install(
     file_path: str,
@@ -817,10 +1102,8 @@ def run_silent_install(
     # Verify HP signature
     if not verify_authenticode(file_path):
         update.result = IssueResult.FailSignatureCode
-        try:
+        with contextlib.suppress(OSError):
             os.remove(file_path)
-        except OSError:
-            pass
         return ""
 
     # Execute the installer
@@ -890,6 +1173,7 @@ def run_loud_install(
 def _split_command_args(command: str) -> list[str]:
     """Split a command string into args, handling quotes."""
     import shlex
+
     try:
         return shlex.split(command)
     except Exception:
@@ -900,9 +1184,11 @@ def _split_command_args(command: str) -> list[str]:
 # Full install flow — mirrors InstallController.DownloadInstallUpdate
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class InstallParameters:
     """Mirrors HP.UpdateClient.Parameters.InstallParameters."""
+
     current_guid: str = ""
     serial_number: str = ""
     scan_type: str = "Manual"  # Manual, DailyBackground, Weekly, PendingValidate
@@ -967,7 +1253,9 @@ def download_and_install(
     # Step 2: Setup temp directory
     if not update.temp_directory:
         rand_dir = str(uuid.uuid4().int)[:5]
-        update.temp_directory = os.path.join(softpaq_folder or tempfile.gettempdir(), rand_dir) + os.sep
+        update.temp_directory = (
+            os.path.join(softpaq_folder or tempfile.gettempdir(), rand_dir) + os.sep
+        )
     os.makedirs(update.temp_directory, exist_ok=True)
 
     # Step 3: Pre-check MSI mutex
@@ -1003,10 +1291,13 @@ def download_and_install(
         progress_callback(weight)
 
     # Step 5: Validate MD5 (for PrinterDriver)
-    if update.action_type == "PrinterDriver" and update.checksum:
-        if not validate_md5(local_path, update.checksum):
-            update.result = IssueResult.FailDownload
-            return update
+    if (
+        update.action_type == "PrinterDriver"
+        and update.checksum
+        and not validate_md5(local_path, update.checksum)
+    ):
+        update.result = IssueResult.FailDownload
+        return update
 
     # Step 6: Check file version (for spNNNN.exe)
     if not check_downloaded_file_version(local_path):
@@ -1025,14 +1316,20 @@ def download_and_install(
         else:
             # StartInstallPrinterUpdates — may need extraction
             extract_dir = os.path.join(update.temp_directory, "extracted")
-            if update.compression_type and update.compression_type != "self":
-                if not extract_softpaq(
-                    update.executable_name, update.temp_directory, extract_dir,
-                    update.compression_type, params.scan_type == "Manual",
+            if (
+                update.compression_type
+                and update.compression_type != "self"
+                and not extract_softpaq(
+                    update.executable_name,
+                    update.temp_directory,
+                    extract_dir,
+                    update.compression_type,
+                    params.scan_type == "Manual",
                     seven_zip_path=seven_zip_path,
-                ):
-                    update.result = IssueResult.ExtractError
-                    return update
+                )
+            ):
+                update.result = IssueResult.ExtractError
+                return update
             command = parse_command(update, extract_dir, update.install_cmd)
             run_loud_install(local_path, command, update)
     else:

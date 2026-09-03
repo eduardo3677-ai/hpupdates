@@ -19,6 +19,7 @@ infrastructure modules (sudf_client, installer, update_detector, windows).
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -40,15 +41,25 @@ PRODUCT_TYPE_SCANNER = 7
 PRODUCT_TYPE_CALCULATOR = 8
 
 _PRODUCT_TYPE_TO_CATEGORY: dict[int, str] = {
-    2: "hppc_", 23: "hppc_", 3: "hppc_", 5: "hppc_",  # Notebook, Chromebook, Tablet, Desktop
+    2: "hppc_",
+    23: "hppc_",
+    3: "hppc_",
+    5: "hppc_",  # Notebook, Chromebook, Tablet, Desktop
     4: "mobile_",
     6: "monitor_",
     7: "scanner_",
     1: "printer_",
-    8: "calculator_", 9: "calculator_", 30: "calculator_",
-    50: "calculator_", 51: "calculator_", 52: "calculator_",
-    53: "calculator_", 54: "calculator_", 70: "calculator_",
-    80: "calculator_", 100: "calculator_",
+    8: "calculator_",
+    9: "calculator_",
+    30: "calculator_",
+    50: "calculator_",
+    51: "calculator_",
+    52: "calculator_",
+    53: "calculator_",
+    54: "calculator_",
+    70: "calculator_",
+    80: "calculator_",
+    100: "calculator_",
 }
 
 
@@ -66,9 +77,11 @@ def support_category(product_type: int, suffix: str) -> str:
 # Response object (mirrors _getBasicObject)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HpsaResponse:
     """Mirrors the basic response object from _getBasicObject()."""
+
     FaultItemList: list[dict] = field(default_factory=list)
 
     def add_error(self, return_code: str, origin: str = "UWP") -> None:
@@ -139,12 +152,30 @@ DEVICE_TEMPLATE: dict = {
 
 # hpsfcustom attributes injected into solution HTML templates
 SOLUTION_CUSTOM_ATTRIBUTES: list[str] = [
-    "UserCountryCode", "IsTestMode", "IframeUrl", "SerialNumber",
-    "IsHPUnit", "PL2LetterCode", "ProductNumber", "ProductName",
-    "ProductType", "ProductSeriesOID", "ProductAudience", "ProductLineGroup",
-    "WSD", "WED", "HardwareFamilyCode", "OsVersion", "IsLocalPC",
-    "EOSDate", "EOSDate2", "WarrantyNoCarepaq", "ExtendWarrantyPW",
-    "Version", "BornOnDate", "MastiffUrl",
+    "UserCountryCode",
+    "IsTestMode",
+    "IframeUrl",
+    "SerialNumber",
+    "IsHPUnit",
+    "PL2LetterCode",
+    "ProductNumber",
+    "ProductName",
+    "ProductType",
+    "ProductSeriesOID",
+    "ProductAudience",
+    "ProductLineGroup",
+    "WSD",
+    "WED",
+    "HardwareFamilyCode",
+    "OsVersion",
+    "IsLocalPC",
+    "EOSDate",
+    "EOSDate2",
+    "WarrantyNoCarepaq",
+    "ExtendWarrantyPW",
+    "Version",
+    "BornOnDate",
+    "MastiffUrl",
 ]
 
 # Content server endpoints (from HPSA9ObjectsCommonScript.js)
@@ -180,6 +211,7 @@ def build_iframe_url(
     if not server or not iframe_folder or not file_name:
         return ""
     import random
+
     return f"{server}/{object_name}/{iframe_folder}/{file_name}.html?id={random.randint(1, 1000)}"
 
 
@@ -190,13 +222,14 @@ def inject_custom_attributes(html: str, values: dict[str, str]) -> str:
     <span hpsfcustom="Key"> innerHTML with actual values.
     """
     import re
+
     for attr_name, attr_value in values.items():
         # Replace input values
         pattern = rf'(<input[^>]*hpsfcustom="{re.escape(attr_name)}"[^>]*value=")([^"]*)(")'
-        html = re.sub(pattern, rf'\g<1>{attr_value}\g<3>', html, flags=re.IGNORECASE)
+        html = re.sub(pattern, rf"\g<1>{attr_value}\g<3>", html, flags=re.IGNORECASE)
         # Replace span innerHTML
         pattern = rf'(<span[^>]*hpsfcustom="{re.escape(attr_name)}"[^>]*>)([^<]*)(</span>)'
-        html = re.sub(pattern, rf'\g<1>{attr_value}\g<3>', html, flags=re.IGNORECASE)
+        html = re.sub(pattern, rf"\g<1>{attr_value}\g<3>", html, flags=re.IGNORECASE)
     return html
 
 
@@ -208,21 +241,59 @@ SUPPORTED_PROTOCOLS = ["hpsalauncher://", "hpsupportassistant://", "hpsaobjectme
 
 # All known hpsalauncher:// actions (extracted from solutions HTML files)
 LAUNCHER_ACTIONS: set[str] = {
-    "AutoDispatch", "AutoRepair", "BPCCleanGuide", "DigitalSupport",
-    "Dockingbrochure", "DownloadSSDFirmware", "DownloadSSDFirmwareV2",
-    "FAQResources", "HPCOVIDInfo", "HPLine", "HPLive", "IIPlatinumTC",
-    "KMWFH", "KakaoTalk", "LearnBackToOffice", "LearnBattPerf",
-    "LearnBattTech", "LearnCOVID19", "LearnDisplaysW10", "LearnFirewallW10",
-    "LearnHPSAChromeOS", "LearnHPSolutionCenter", "LearnHeatDissipation",
-    "LearnIIPro", "LearnImproveGamePerformance", "LearnOverheat",
-    "LearnPCClean", "LearnPCMonitor", "LearnPowerMgmt", "LearnRecovery",
-    "LearnSetupPrinter", "LearnThermalMitigation", "LearnToBackupW810",
-    "LearnUsingHPSA", "LearnWin11", "McAfeeDefenderLearnW8A",
-    "McAfeeNoAVLearnW8A", "PrintQuality", "PrintSwUpdate", "RepairCenter",
-    "ServicecenterPW", "SustainablePC", "SustainablePrint", "WeChat",
-    "Win11InstallAssistant", "Win11Resources", "hpprivacy",
-    "hponlineuserguide", "learnStorageSpace", "learncarenb",
-    "learninstantink", "learninstantinkpaper", "learntobackupw810",
+    "AutoDispatch",
+    "AutoRepair",
+    "BPCCleanGuide",
+    "DigitalSupport",
+    "Dockingbrochure",
+    "DownloadSSDFirmware",
+    "DownloadSSDFirmwareV2",
+    "FAQResources",
+    "HPCOVIDInfo",
+    "HPLine",
+    "HPLive",
+    "IIPlatinumTC",
+    "KMWFH",
+    "KakaoTalk",
+    "LearnBackToOffice",
+    "LearnBattPerf",
+    "LearnBattTech",
+    "LearnCOVID19",
+    "LearnDisplaysW10",
+    "LearnFirewallW10",
+    "LearnHPSAChromeOS",
+    "LearnHPSolutionCenter",
+    "LearnHeatDissipation",
+    "LearnIIPro",
+    "LearnImproveGamePerformance",
+    "LearnOverheat",
+    "LearnPCClean",
+    "LearnPCMonitor",
+    "LearnPowerMgmt",
+    "LearnRecovery",
+    "LearnSetupPrinter",
+    "LearnThermalMitigation",
+    "LearnToBackupW810",
+    "LearnUsingHPSA",
+    "LearnWin11",
+    "McAfeeDefenderLearnW8A",
+    "McAfeeNoAVLearnW8A",
+    "PrintQuality",
+    "PrintSwUpdate",
+    "RepairCenter",
+    "ServicecenterPW",
+    "SustainablePC",
+    "SustainablePrint",
+    "WeChat",
+    "Win11InstallAssistant",
+    "Win11Resources",
+    "hpprivacy",
+    "hponlineuserguide",
+    "learnStorageSpace",
+    "learncarenb",
+    "learninstantink",
+    "learninstantinkpaper",
+    "learntobackupw810",
     "polyday1message",
 }
 
@@ -231,11 +302,12 @@ def parse_launcher_url(url: str) -> tuple[str, dict[str, str]]:
     """Parse a hpsalauncher:// URL — mirrors registerCustomProtocolCalls().
 
     Returns (action_name, params_dict).
-    Example: "hpsalauncher://LearnWin11&SerialNumber=ABC123" -> ("LearnWin11", {"SerialNumber": "ABC123"})
+    Example: "hpsalauncher://LearnWin11&SerialNumber=ABC123"
+    -> ("LearnWin11", {"SerialNumber": "ABC123"})
     """
     for protocol in SUPPORTED_PROTOCOLS:
         if url.lower().startswith(protocol):
-            rest = url[len(protocol):]
+            rest = url[len(protocol) :]
             parts = rest.split("&")
             action = parts[0]
             params: dict[str, str] = {}
@@ -275,10 +347,13 @@ CHECK_FOR_UPDATES_MAPPING: dict[int, int] = {
 @dataclass
 class HpsaSettings:
     """Mirrors the settings object from getSettings()."""
+
     show_taskbar_icon: bool = True
     show_contacts_and_warranty: bool = False
     share_usage_data: bool = False
-    check_for_updates: int = 1  # 0=important auto, 1=important+recommended auto, 2=check only, 3=never
+    check_for_updates: int = (
+        1  # 0=important auto, 1=important+recommended auto, 2=check only, 3=never
+    )
     next_scan_date_utc: str = ""
     scan_weekday: int = 0
     scan_time: str = ""
@@ -319,7 +394,13 @@ WARRANTY_KEYS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 SECURITY_PROPERTIES: list[str] = [
-    "Firewall", "Antivirus", "Antispyware", "Internet", "Service", "Autoupdate", "UAC",
+    "Firewall",
+    "Antivirus",
+    "Antispyware",
+    "Internet",
+    "Service",
+    "Autoupdate",
+    "UAC",
 ]
 
 # Products that have security check (Notebook, Tablet, Desktop)
@@ -331,9 +412,16 @@ SECURITY_PRODUCT_TYPES: list[int] = [2, 3, 5]
 # ---------------------------------------------------------------------------
 
 EXTERNAL_URL_IDS: list[str] = [
-    "LearnEULA", "hpPrivacy", "warrantyDispute", "registerCarePack",
-    "hpsaFaq", "HpsaCountrySites", "InstallHpsa", "contact",
-    "learnhpsa9", "hpmyaccount",
+    "LearnEULA",
+    "hpPrivacy",
+    "warrantyDispute",
+    "registerCarePack",
+    "hpsaFaq",
+    "HpsaCountrySites",
+    "InstallHpsa",
+    "contact",
+    "learnhpsa9",
+    "hpmyaccount",
 ]
 
 
@@ -350,6 +438,7 @@ UPDATE_STEP_DOWNLOAD_INSTALL = 4
 # ---------------------------------------------------------------------------
 # API client — reproduces the HpsaCordovaProxy dispatch
 # ---------------------------------------------------------------------------
+
 
 class HpsaWebClient:
     """Web layer API client — mirrors HpsaCordovaProxy.call() dispatch.
@@ -407,20 +496,22 @@ class HpsaWebClient:
             return _basic_object("DeviceNotFound")
 
         result = _basic_object()
-        result.update({
-            "IsPrimary": device.get("IsPrimary", False),
-            "ProductName": device.get("ProductName", ""),
-            "ProductType": device.get("ProductType", 0),
-            "ProductNumber": device.get("ProductNumber", ""),
-            "SerialNumber": device.get("SerialNumber", ""),
-            "ImageLink": device.get("ImageLink", ""),
-            "NickName": device.get("NickName", ""),
-            "DeviceId": device_id,
-            "UpdatesCount": device.get("UpdatesCount", 0),
-            "IsRemote": device.get("IsRemote", False),
-            "IsHPMachine": device.get("IsHPMachine", True),
-            "Details": [],
-        })
+        result.update(
+            {
+                "IsPrimary": device.get("IsPrimary", False),
+                "ProductName": device.get("ProductName", ""),
+                "ProductType": device.get("ProductType", 0),
+                "ProductNumber": device.get("ProductNumber", ""),
+                "SerialNumber": device.get("SerialNumber", ""),
+                "ImageLink": device.get("ImageLink", ""),
+                "NickName": device.get("NickName", ""),
+                "DeviceId": device_id,
+                "UpdatesCount": device.get("UpdatesCount", 0),
+                "IsRemote": device.get("IsRemote", False),
+                "IsHPMachine": device.get("IsHPMachine", True),
+                "Details": [],
+            }
+        )
         return result
 
     def device_add(self, nickname: str, ip_address: str = "") -> dict:
@@ -532,17 +623,17 @@ class HpsaWebClient:
                 result["downloadInstallUpdate"] = response
             except Exception as e:
                 logger.error(f"download_install_update failed: {e}")
-                result.add_error("InternalError") if hasattr(result, "add_error") else result["FaultItemList"].append({"Origin": "UWP", "ReturnCode": "InternalError"})  # type: ignore[index]
+                result.add_error("InternalError") if hasattr(result, "add_error") else result[
+                    "FaultItemList"
+                ].append({"Origin": "UWP", "ReturnCode": "InternalError"})  # type: ignore[index]
         return result
 
     def cancel_download_install(self, guids: list[str], serial_number: str) -> dict:
         """Cancel download/install — mirrors 'cancelDownloadInstall'."""
         result = _basic_object()
         if self.installer:
-            try:
+            with contextlib.suppress(Exception):
                 result["data"] = self.installer.cancel(guids, serial_number)
-            except Exception:
-                pass
         return result
 
     def get_install_result(self, guid_list: list[str], serial_number: str) -> dict:
@@ -645,19 +736,21 @@ class HpsaWebClient:
         warranty web service (HPWSD) with SN + PN.
         """
         result = _basic_object()
-        result.update({
-            "ProductName": None,
-            "ProductNumber": product_number,
-            "SerialNumber": serial_number,
-            "BornOnDate": None,
-            "LastCheckDate": None,
-            "WarrantyStartDate": None,
-            "WarrantyEndDate": None,
-            "SoftwareCarePackEndDate": None,
-            "HardwareCarePackEndDate": None,
-            "IsWarrantyRefreshed": False,
-            "WarrantyStatus": False,
-        })
+        result.update(
+            {
+                "ProductName": None,
+                "ProductNumber": product_number,
+                "SerialNumber": serial_number,
+                "BornOnDate": None,
+                "LastCheckDate": None,
+                "WarrantyStartDate": None,
+                "WarrantyEndDate": None,
+                "SoftwareCarePackEndDate": None,
+                "HardwareCarePackEndDate": None,
+                "IsWarrantyRefreshed": False,
+                "WarrantyStatus": False,
+            }
+        )
         return result
 
     # -- Health operations -------------------------------------------------
@@ -759,18 +852,20 @@ class HpsaWebClient:
         Calls ProfileTask().getProfile() which contacts HP's profile service.
         """
         result = _basic_object()
-        result.update({
-            "FirstName": None,
-            "LastName": None,
-            "City": None,
-            "Email": None,
-            "EmailOffers": False,
-            "PrimaryUse": None,
-            "Country": None,
-            "Language": None,
-            "ActiveHealth": None,
-            "CompanyName": None,
-        })
+        result.update(
+            {
+                "FirstName": None,
+                "LastName": None,
+                "City": None,
+                "Email": None,
+                "EmailOffers": False,
+                "PrimaryUse": None,
+                "Country": None,
+                "Language": None,
+                "ActiveHealth": None,
+                "CompanyName": None,
+            }
+        )
         return result
 
     def set_profile(self, profile_data: dict) -> dict:
@@ -829,7 +924,9 @@ class HpsaWebClient:
         """Request to close case — mirrors 'requestToCloseCase'."""
         return _basic_object()
 
-    def get_service_centers(self, serial_number: str, city_or_zip: str, filters: str, radius: int) -> dict:
+    def get_service_centers(
+        self, serial_number: str, city_or_zip: str, filters: str, radius: int
+    ) -> dict:
         """Get service centers — mirrors 'getServiceCenters'."""
         return _basic_object()
 

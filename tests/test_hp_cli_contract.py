@@ -13,15 +13,39 @@ def test_only_essential_commands_are_present() -> None:
     cmd_names = {cmd.name for cmd in app.registered_commands if cmd.name}
 
     # The 8 essential commands must be present.
-    expected = {"info", "scan", "update", "download-all",
-                "softpaq-download", "softpaq-install", "bios-check", "warranty"}
+    expected = {
+        "info",
+        "scan",
+        "update",
+        "download-all",
+        "softpaq-download",
+        "softpaq-install",
+        "bios-check",
+        "warranty",
+    }
     assert expected <= cmd_names, f"Missing commands: {expected - cmd_names}"
 
     # Removed commands must NOT be present as command names.
-    removed = {"inventory", "identify", "sync-catalogs", "software", "interactive",
-               "doctor", "endpoints", "remove", "settings", "web-action",
-               "solutions", "launcher", "os-code", "pnp-devices",
-               "health-check", "messages", "sudf-scan", "sudf-scan-json"}
+    removed = {
+        "inventory",
+        "identify",
+        "sync-catalogs",
+        "software",
+        "interactive",
+        "doctor",
+        "endpoints",
+        "remove",
+        "settings",
+        "web-action",
+        "solutions",
+        "launcher",
+        "os-code",
+        "pnp-devices",
+        "health-check",
+        "messages",
+        "sudf-scan",
+        "sudf-scan-json",
+    }
     assert not (removed & cmd_names), f"Removed commands still present: {removed & cmd_names}"
 
 

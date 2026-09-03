@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass
 
 from hpupdates.infrastructure.os_params import create_os_code
-from hpupdates.infrastructure.windows.backend import WindowsDriverBackend, CommandRunner
+from hpupdates.infrastructure.windows.backend import CommandRunner, WindowsDriverBackend
 from hpupdates.models.models import Device, MachineProfile
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,5 @@ def detect_profile_or_exit() -> DeviceProfile:
         msg = f"Error: Cannot detect device profile: {exc}"
         print(msg)
         print(msg, file=sys.stderr)
-        print(
-            "This command must run on a Windows HP device with PowerShell available."
-        )
+        print("This command must run on a Windows HP device with PowerShell available.")
         raise SystemExit(1) from exc

@@ -1,7 +1,5 @@
 import pytest
-from typer.testing import CliRunner
 
-from hpupdates.cli import app
 from hpupdates.infrastructure.endpoints import (
     EndpointPolicyError,
     endpoint_inventory,
@@ -56,6 +54,3 @@ def test_nonproduction_and_internal_endpoints_are_never_operational() -> None:
 def test_unknown_endpoint_name_fails_closed() -> None:
     with pytest.raises(EndpointPolicyError, match="unknown"):
         require_operational_endpoint("arbitrary")
-
-
-

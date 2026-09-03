@@ -8,11 +8,11 @@ from pathlib import Path
 import httpx
 import pytest
 
-from hpupdates.models.models import MachineProfile
 from hpupdates.infrastructure.catalog.hp_catalog import (
     HpCatalogError,
     HpImageAssistantCatalogProvider,
 )
+from hpupdates.models.models import MachineProfile
 
 PLATFORM_XML = """<?xml version="1.0" encoding="utf-8"?>
 <ImagePal>

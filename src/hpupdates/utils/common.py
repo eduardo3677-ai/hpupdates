@@ -42,7 +42,7 @@ def sha256_file(path: Path) -> str:
 
 def truncate(s: str, max_len: int = 60) -> str:
     """Truncate a string with ellipsis if too long."""
-    return s[:max_len - 1] + "…" if len(s) > max_len else s
+    return s[: max_len - 1] + "…" if len(s) > max_len else s
 
 
 def safe_int(value: Any, default: int = 0) -> int:

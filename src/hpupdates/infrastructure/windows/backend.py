@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 import json
 import re
 import shutil
@@ -243,7 +242,9 @@ class WindowsDriverBackend:
             "$bios=Get-CimInstance Win32_BIOS;"
             "$baseboard=Get-CimInstance Win32_BaseBoard;"
             "$regBioDate=$null;"
-            "try{$regBioDate=(Get-ItemProperty 'HKLM:\\HARDWARE\\DESCRIPTION\\System\\BIOS' -ErrorAction SilentlyContinue).BIOSReleaseDate}catch{};"
+            "try{$regBioDate=(Get-ItemProperty "
+            "'HKLM:\\HARDWARE\\DESCRIPTION\\System\\BIOS' "
+            "-ErrorAction SilentlyContinue).BIOSReleaseDate}catch{};"
             "[pscustomobject]@{"
             "BIOSReleaseDate=$regBioDate;"
             "SMBIOSBIOSVersion=$bios.SMBIOSBIOSVersion;"
@@ -254,6 +255,7 @@ class WindowsDriverBackend:
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script]
         )
         import json
+
         row = json.loads(raw)
         return {
             "bios_release_date": str(row.get("BIOSReleaseDate") or ""),
@@ -288,6 +290,7 @@ class WindowsDriverBackend:
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script]
         )
         import json
+
         row = json.loads(raw)
         arch_str = str(row.get("OSArchitecture") or "")
         arch = "64" if "64" in arch_str else ("32" if "32" in arch_str else "")
@@ -297,6 +300,7 @@ class WindowsDriverBackend:
         minor = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
         build = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
         from hpupdates.infrastructure.os_params import os_version_name
+
         os_name = os_version_name(major, minor, build)
         release_id = str(row.get("DisplayVersion") or "")
         if not release_id or release_id.lower() == "20h2":
@@ -304,7 +308,9 @@ class WindowsDriverBackend:
         product_name = str(row.get("OSProductName") or "")
         if not product_name:
             caption = str(row.get("Caption") or "")
-            product_name = caption.lower().replace("microsoft", "").replace(os_name.lower(), "").strip()
+            product_name = (
+                caption.lower().replace("microsoft", "").replace(os_name.lower(), "").strip()
+            )
         return {
             "os_product_name": product_name,
             "os_version_name": os_name,

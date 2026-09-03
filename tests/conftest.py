@@ -1,4 +1,5 @@
 """Pytest configuration for hp-driverctl tests."""
+
 import sys
 from pathlib import Path
 

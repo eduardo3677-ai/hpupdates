@@ -7,8 +7,6 @@ import pytest
 from hpupdates.infrastructure.os_params import (
     OSParams,
     OSProfix,
-    OSProductName,
-    OSRule,
     _get_same_word_count,
     _load_osparams,
     create_os_code,
@@ -18,10 +16,10 @@ from hpupdates.infrastructure.os_params import (
     report_os_version,
 )
 
-
 # ---------------------------------------------------------------------------
 # is_win11
 # ---------------------------------------------------------------------------
+
 
 class TestIsWin11:
     def test_major_greater_than_10(self) -> None:
@@ -46,6 +44,7 @@ class TestIsWin11:
 # os_version_name
 # ---------------------------------------------------------------------------
 
+
 class TestOsVersionName:
     @pytest.mark.parametrize(
         "major,minor,build,expected",
@@ -62,9 +61,7 @@ class TestOsVersionName:
             (12, 0, 0, "Windows 11"),
         ],
     )
-    def test_version_name_mapping(
-        self, major: int, minor: int, build: int, expected: str
-    ) -> None:
+    def test_version_name_mapping(self, major: int, minor: int, build: int, expected: str) -> None:
         assert os_version_name(major, minor, build) == expected
 
     def test_unknown_minor_falls_back_to_8_1(self) -> None:
@@ -79,6 +76,7 @@ class TestOsVersionName:
 # ---------------------------------------------------------------------------
 # report_os_version
 # ---------------------------------------------------------------------------
+
 
 class TestReportOsVersion:
     def test_win11_uses_num_8(self) -> None:
@@ -111,6 +109,7 @@ class TestReportOsVersion:
 # _get_same_word_count
 # ---------------------------------------------------------------------------
 
+
 class TestGetSameWordCount:
     def test_exact_match(self) -> None:
         assert _get_same_word_count("Windows Pro", "Windows Pro") == 2
@@ -136,6 +135,7 @@ class TestGetSameWordCount:
 # _load_osparams
 # ---------------------------------------------------------------------------
 
+
 class TestLoadOsParams:
     def test_returns_proper_structure(self) -> None:
         params = _load_osparams()
@@ -156,7 +156,7 @@ class TestLoadOsParams:
 
     def test_dataclasses_are_frozen(self) -> None:
         profix = OSProfix(name="W7", value="Windows 7")
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             profix.name = "W8"  # type: ignore[misc]
 
     def test_rule_mapping_is_tuple(self) -> None:
@@ -168,6 +168,7 @@ class TestLoadOsParams:
 # ---------------------------------------------------------------------------
 # create_os_codes
 # ---------------------------------------------------------------------------
+
 
 class TestCreateOsCodes:
     def test_windows_7_professional_64(self) -> None:
@@ -246,6 +247,7 @@ class TestCreateOsCodes:
 # ---------------------------------------------------------------------------
 # create_os_code (primary)
 # ---------------------------------------------------------------------------
+
 
 class TestCreateOsCode:
     def test_returns_first_code(self) -> None:

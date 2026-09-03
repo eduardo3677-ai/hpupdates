@@ -1,3 +1,45 @@
 """SUDF subpackage — SUDF v3 client interoperability."""
 
-from hpupdates.infrastructure.sudf._impl import *
+from hpupdates.infrastructure.sudf._impl import (
+    AWS_ALGORITHM,
+    AWS_REGION,
+    AWS_SERVICE,
+    SIGNED_HEADERS,
+    MessagesRequest,
+    PrinterUpdatesRequest,
+    SudfAuthenticationError,
+    SudfClient,
+    SudfCredentials,
+    SudfDownloadError,
+    SudfEnvironment,
+    SudfRequest,
+    aes_decrypt_string,
+    create_sha256_cache_id,
+    decrypt_embedded_api_key,
+    get_dpapi_entropy,
+    get_signature_key,
+    sign_request,
+    to_guid,
+)
+
+__all__ = [
+    "AWS_ALGORITHM",
+    "AWS_REGION",
+    "AWS_SERVICE",
+    "MessagesRequest",
+    "PrinterUpdatesRequest",
+    "SIGNED_HEADERS",
+    "SudfAuthenticationError",
+    "SudfClient",
+    "SudfCredentials",
+    "SudfDownloadError",
+    "SudfEnvironment",
+    "SudfRequest",
+    "aes_decrypt_string",
+    "create_sha256_cache_id",
+    "decrypt_embedded_api_key",
+    "get_dpapi_entropy",
+    "get_signature_key",
+    "sign_request",
+    "to_guid",
+]

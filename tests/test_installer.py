@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import zipfile
 
 import pytest
@@ -27,10 +26,10 @@ from hpupdates.infrastructure.installer import (
     validate_md5,
 )
 
-
 # ---------------------------------------------------------------------------
 # IssueResult enum
 # ---------------------------------------------------------------------------
+
 
 class TestIssueResult:
     def test_enum_values(self) -> None:
@@ -50,6 +49,7 @@ class TestIssueResult:
 # DownloadStatus enum
 # ---------------------------------------------------------------------------
 
+
 class TestDownloadStatus:
     def test_enum_values(self) -> None:
         assert DownloadStatus.Initializing == 0
@@ -67,6 +67,7 @@ class TestDownloadStatus:
 # ---------------------------------------------------------------------------
 # URL validation
 # ---------------------------------------------------------------------------
+
 
 class TestIsValidUrl:
     def test_valid_hp_com(self) -> None:
@@ -98,6 +99,7 @@ class TestIsValidUrl:
 # force_https
 # ---------------------------------------------------------------------------
 
+
 class TestForceHttps:
     def test_replaces_http(self) -> None:
         assert force_https("http://ftp.hp.com/file.exe") == "https://ftp.hp.com/file.exe"
@@ -112,6 +114,7 @@ class TestForceHttps:
 # ---------------------------------------------------------------------------
 # get_download_url
 # ---------------------------------------------------------------------------
+
 
 class TestGetDownloadUrl:
     def test_auto_uses_url_result(self) -> None:
@@ -164,6 +167,7 @@ class TestGetDownloadUrl:
 # validate_md5
 # ---------------------------------------------------------------------------
 
+
 class TestValidateMd5:
     def test_matching_checksum(self, tmp_path) -> None:
         content = b"driver binary content"
@@ -201,6 +205,7 @@ class TestValidateMd5:
 # check_downloaded_file_version
 # ---------------------------------------------------------------------------
 
+
 class TestCheckDownloadedFileVersion:
     def test_non_sp_file_passes(self, tmp_path) -> None:
         f = tmp_path / "regular.exe"
@@ -216,6 +221,7 @@ class TestCheckDownloadedFileVersion:
 # ---------------------------------------------------------------------------
 # map_installation_result (exit code mapping)
 # ---------------------------------------------------------------------------
+
 
 class TestMapInstallationResult:
     def test_explicit_success_code(self) -> None:
@@ -305,6 +311,7 @@ class TestMapInstallationResult:
 # determine_loud_mode
 # ---------------------------------------------------------------------------
 
+
 class TestDetermineLoudMode:
     def test_no_silent_string_is_loud(self) -> None:
         u = SoftPaqUpdate(silent_install_string="")
@@ -364,7 +371,10 @@ class TestDetermineLoudMode:
     def test_below_thresholds_not_loud(self) -> None:
         u = SoftPaqUpdate(
             silent_install_string="/s",
-            silent_fail_count=1, cancel_count=2, loud_fail_count=2, timeout_count=2,
+            silent_fail_count=1,
+            cancel_count=2,
+            loud_fail_count=2,
+            timeout_count=2,
         )
         p = InstallParameters()
         assert determine_loud_mode(u, p) is False
@@ -373,6 +383,7 @@ class TestDetermineLoudMode:
 # ---------------------------------------------------------------------------
 # parse_command
 # ---------------------------------------------------------------------------
+
 
 class TestParseCommand:
     def test_update_wraps_command(self) -> None:
@@ -389,6 +400,7 @@ class TestParseCommand:
 # ---------------------------------------------------------------------------
 # _verify_file_extension
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyFileExtension:
     @pytest.mark.parametrize("ext", [".exe", ".msi", ".msp", ".msu"])
@@ -408,6 +420,7 @@ class TestVerifyFileExtension:
 # extract_softpaq
 # ---------------------------------------------------------------------------
 
+
 class TestExtractSoftpaq:
     def test_self_type_returns_true(self) -> None:
         assert extract_softpaq("f.exe", "/tmp", "/tmp/out", "self") is True
@@ -423,29 +436,24 @@ class TestExtractSoftpaq:
         with zipfile.ZipFile(zip_path, "w") as zf:
             zf.writestr("inner.txt", "hello")
         out_dir = tmp_path / "out"
-        assert extract_softpaq(
-            "test.zip", str(tmp_path), str(out_dir), "zip"
-        ) is True
+        assert extract_softpaq("test.zip", str(tmp_path), str(out_dir), "zip") is True
         assert (out_dir / "inner.txt").read_text() == "hello"
 
     def test_zip_invalid_file_returns_false(self, tmp_path) -> None:
         bad_zip = tmp_path / "bad.zip"
         bad_zip.write_bytes(b"not a zip")
-        assert extract_softpaq(
-            "bad.zip", str(tmp_path), str(tmp_path / "out"), "zip"
-        ) is False
+        assert extract_softpaq("bad.zip", str(tmp_path), str(tmp_path / "out"), "zip") is False
 
     def test_unknown_type_returns_false(self, tmp_path) -> None:
         f = tmp_path / "f.exe"
         f.write_bytes(b"x")
-        assert extract_softpaq(
-            "f.exe", str(tmp_path), str(tmp_path / "out"), "unknown"
-        ) is False
+        assert extract_softpaq("f.exe", str(tmp_path), str(tmp_path / "out"), "unknown") is False
 
 
 # ---------------------------------------------------------------------------
 # has_enough_disk_space
 # ---------------------------------------------------------------------------
+
 
 class TestHasEnoughDiskSpace:
     def test_small_size_returns_true(self) -> None:
@@ -459,6 +467,7 @@ class TestHasEnoughDiskSpace:
 # ---------------------------------------------------------------------------
 # SoftPaqUpdate defaults
 # ---------------------------------------------------------------------------
+
 
 class TestSoftPaqUpdate:
     def test_defaults(self) -> None:
@@ -486,6 +495,7 @@ class TestSoftPaqUpdate:
 # InstallParameters defaults
 # ---------------------------------------------------------------------------
 
+
 class TestInstallParameters:
     def test_defaults(self) -> None:
         p = InstallParameters()
@@ -497,7 +507,9 @@ class TestInstallParameters:
 
     def test_custom_values(self) -> None:
         p = InstallParameters(
-            scan_type="Weekly", is_manual_loud=True, locale="de",
+            scan_type="Weekly",
+            is_manual_loud=True,
+            locale="de",
             guids=["g1", "g2"],
         )
         assert p.scan_type == "Weekly"
@@ -509,6 +521,7 @@ class TestInstallParameters:
 # ---------------------------------------------------------------------------
 # DownloadResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestDownloadResult:
     def test_defaults(self) -> None:
