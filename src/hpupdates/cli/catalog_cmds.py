@@ -20,11 +20,26 @@ from hpupdates.infrastructure.catalog.bundle import HpCatalogBundleProvider
 from hpupdates.infrastructure.downloader import Downloader
 from hpupdates.infrastructure.endpoints import endpoint_inventory
 from hpupdates.infrastructure.catalog.hp_catalog import HpCatalogError, HpImageAssistantCatalogProvider
-from hpupdates.infrastructure.os_params import create_os_code
+from hpupdates.infrastructure.os_params import create_os_code, os_version_name
 from hpupdates.infrastructure.windows.backend import CommandRunner, WindowsDriverBackend
 
 app = typer.Typer(help="Open-source, auditable Windows HP driver maintenance CLI.")
 console = Console()
+
+
+def _os_friendly_name(os_version: str, os_build: str) -> str:
+    """Convert raw OS version string (e.g. '10.0.26200') to friendly name ('Windows 11').
+
+    Mirrors OSInformation.OSVersionName — uses major.minor.build to determine
+    whether this is Windows 10 or Windows 11 (build >= 22000).
+    """
+    parts = os_version.split(".")
+    major = int(parts[0]) if parts and parts[0].isdigit() else 0
+    minor = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+    build = int(os_build) if os_build.isdigit() else (
+        int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    )
+    return os_version_name(major, minor, build)
 
 
 def _load_inventory(path: Path) -> list[Device]:
@@ -65,7 +80,7 @@ def _sudf_catalog_fallback(profile, path: Path) -> Path:
 
     os_code = create_os_code(
         profile.os_caption,
-        profile.os_version,
+        _os_friendly_name(profile.os_version, profile.os_build),
         profile.os_architecture,
         profile.display_version or profile.edition_id,
     )
