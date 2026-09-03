@@ -947,6 +947,7 @@ class SudfClient:
             "x-api-key": self.credentials.api_key,
             "x-amz-content-sha256": body_hash,
             "x-api-cacheId": create_sha256_cache_id(cache_material),
+            "user-agent": "HP Support Assistant/9.0.0",
         }
         headers["Authorization"] = sign_request(
             method="POST",

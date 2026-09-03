@@ -47,7 +47,7 @@ def sudf_scan(
     """
     profile = detect_profile_or_exit()
     _country = country or "us"
-    _language = language or "en"
+    _language = language or "en-US"
 
     from hpupdates.cli._helpers import _build_sudf_client
     from hpupdates.core.services import SudfScanService
@@ -105,7 +105,7 @@ def sudf_scan_json(
     """Scan for updates and emit JSON (all auto-detected)."""
     profile = detect_profile_or_exit()
     _country = country or "us"
-    _language = language or "en"
+    _language = language or "en-US"
 
     from hpupdates.cli._helpers import _build_sudf_client
     from hpupdates.core.services import SudfScanService
@@ -145,7 +145,7 @@ def bios_check(
     """Check if a BIOS update is available (auto-detects current BIOS)."""
     profile = detect_profile_or_exit()
     _country = country or "us"
-    _language = language or "en"
+    _language = language or "en-US"
 
     from hpupdates.cli._helpers import _build_sudf_client
     from hpupdates.core.services import SudfScanService
@@ -423,7 +423,7 @@ def update_all(
     """
     profile = detect_profile_or_exit()
     _country = country or "us"
-    _language = language or "en"
+    _language = language or "en-US"
 
     console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")
 
@@ -524,7 +524,7 @@ def download_all(
     """
     profile = detect_profile_or_exit()
     _country = country or "us"
-    _language = language or "en"
+    _language = language or "en-US"
     destination.mkdir(parents=True, exist_ok=True)
 
     console.print(f"[cyan]Scanning for updates (SysID={profile.sys_id}, OS={profile.os_code})...[/]")

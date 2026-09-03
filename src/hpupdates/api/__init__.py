@@ -5,7 +5,7 @@ Import from here for programmatic usage:
     from hpupdates.api import HpupdatesClient
 
     client = HpupdatesClient()
-    updates = client.scan_updates(sys_id="83B3", country="us", language="en")
+    updates = client.scan_updates(sys_id="83B3", country="us", language="en-US")
 """
 
 from __future__ import annotations
@@ -38,8 +38,8 @@ class HpupdatesClient:
         self,
         sys_id: str,
         country: str = "us",
-        language: str = "en",
-        use_case: str = "HPSA9",
+        language: str = "en-US",
+        use_case: str = "HPSF",
         os_code: str = "",
     ) -> list[dict]:
         """Scan for available updates via SUDF GetUpdatesBySysId.
